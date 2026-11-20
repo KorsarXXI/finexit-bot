@@ -888,4 +888,2048 @@
       width: 190px;
       height: auto;
       aspect-ratio: 9 / 16;
-      border-radius: 1
+      border-radius: 18px;
+      border: 1px solid var(--border-strong);
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.45);
+    }
+
+    /* Заглушки пустых списков */
+    .empty-box {
+      text-align: center;
+      padding: 26px 16px;
+      background: var(--card);
+      border: 1px dashed var(--border-strong);
+      border-radius: var(--radius-xl);
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <div id="toast-root" class="toast-root"></div>
+    <div id="app-root" style="display:flex;flex-direction:column;flex:1;"></div>
+    <div id="modal-root"></div>
+  </div>
+
+  <script>
+    (function () {
+      'use strict';
+
+      // =========================================================================
+      // 1. ВСТРОЕННЫЕ SVG-ИКОНКИ (ZERO EXTERNAL ASSETS)
+      // =========================================================================
+      const SVG = {
+        wallet: '<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/></svg>',
+        flame: '<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>',
+        stop: '<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="2" x2="22" y1="12" y2="12"/><line x1="12" x2="12" y1="2" y2="22"/><path d="m20 16-4-4 4-4"/><path d="m4 8 4 4-4 4"/><path d="m16 4-4 4-4-4"/><path d="m8 20 4-4 4 4"/></svg>',
+        user: '<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
+        mic: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>',
+        send: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>',
+        plus: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>',
+        trash: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>',
+        refresh: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>',
+        x: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>',
+        download: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>',
+      };
+
+      // =========================================================================
+      // 2. АДАПТЕР ХРАНИЛИЩА (TELEGRAM CLOUDSTORAGE С ЧАНКИНГОМ + LOCALSTORAGE)
+      // =========================================================================
+      const LOCAL_KEY = 'finexit_state_v1';
+      const CHUNK_LIMIT = 3000; // До 3000 ASCII-символов (строго ниже лимита Telegram 4096 байт)
+
+      const Storage = {
+        tg: null,
+        isTelegram: false,
+        hasCloud: false,
+        userName: '',
+        status: 'local', // local | cloud | syncing | fallback
+        lastChunkCount: 0,
+        debounceTimer: null,
+
+        init() {
+          try {
+            const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
+            this.tg = tg;
+            const inTg = Boolean(tg && (tg.initData || (tg.platform && tg.platform !== 'unknown')));
+            this.isTelegram = inTg;
+            if (inTg) {
+              tg.ready();
+              tg.expand();
+              if (tg.setHeaderColor) {
+                try { tg.setHeaderColor('#0d1117'); } catch (_) {}
+              }
+              if (tg.setBackgroundColor) {
+                try { tg.setBackgroundColor('#0d1117'); } catch (_) {}
+              }
+              if (tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.first_name) {
+                this.userName = tg.initDataUnsafe.user.first_name;
+              }
+              const supportsCloud = Boolean(
+                tg.CloudStorage &&
+                typeof tg.CloudStorage.getItems === 'function' &&
+                typeof tg.CloudStorage.setItem === 'function' &&
+                (!tg.isVersionAtLeast || tg.isVersionAtLeast('6.9'))
+              );
+              this.hasCloud = supportsCloud;
+              this.status = supportsCloud ? 'cloud' : 'local';
+            }
+          } catch (err) {
+            this.isTelegram = false;
+            this.hasCloud = false;
+            this.status = 'local';
+          }
+        },
+
+        haptic(type) {
+          try {
+            if (this.isTelegram && this.tg && this.tg.HapticFeedback) {
+              this.tg.HapticFeedback.impactOccurred(type || 'light');
+            }
+          } catch (_) {}
+        },
+
+        loadLocal() {
+          try {
+            const raw = localStorage.getItem(LOCAL_KEY);
+            return raw ? JSON.parse(raw) : null;
+          } catch (_) {
+            return null;
+          }
+        },
+
+        saveLocal(data) {
+          try {
+            localStorage.setItem(LOCAL_KEY, JSON.stringify(data));
+          } catch (_) {}
+        },
+
+        _getItems(keys) {
+          return new Promise((resolve, reject) => {
+            try {
+              this.tg.CloudStorage.getItems(keys, (err, vals) => {
+                if (err) reject(err);
+                else resolve(vals || {});
+              });
+            } catch (e) {
+              reject(e);
+            }
+          });
+        },
+
+        _setItem(key, val) {
+          return new Promise((resolve, reject) => {
+            try {
+              this.tg.CloudStorage.setItem(key, val, (err, ok) => {
+                if (err) reject(err);
+                else resolve(ok);
+              });
+            } catch (e) {
+              reject(e);
+            }
+          });
+        },
+
+        _removeItems(keys) {
+          return new Promise((resolve) => {
+            if (!keys || !keys.length) return resolve(true);
+            try {
+              this.tg.CloudStorage.removeItems(keys, () => resolve(true));
+            } catch (_) {
+              resolve(false);
+            }
+          });
+        },
+
+        async loadCloud() {
+          if (!this.hasCloud) return null;
+          this.status = 'syncing';
+          updateStorageBadges();
+          try {
+            const metaObj = await this._getItems(['fx_meta']);
+            if (!metaObj || !metaObj.fx_meta) {
+              this.status = 'cloud';
+              updateStorageBadges();
+              return null;
+            }
+            const meta = JSON.parse(metaObj.fx_meta);
+            const count = Number(meta.chunks) || 0;
+            this.lastChunkCount = count;
+            if (count <= 0) {
+              this.status = 'cloud';
+              updateStorageBadges();
+              return null;
+            }
+            const keys = [];
+            for (let i = 0; i < count; i++) keys.push('fx_c_' + i);
+            const parts = await this._getItems(keys);
+            let joined = '';
+            for (let i = 0; i < count; i++) {
+              if (typeof parts['fx_c_' + i] !== 'string') throw new Error('Broken chunk');
+              joined += parts['fx_c_' + i];
+            }
+            const decoded = meta.enc === 'uri' ? decodeURIComponent(joined) : joined;
+            this.status = 'cloud';
+            updateStorageBadges();
+            return JSON.parse(decoded);
+          } catch (_) {
+            this.status = 'fallback';
+            updateStorageBadges();
+            return null;
+          }
+        },
+
+        async saveCloud(data) {
+          this.saveLocal(data);
+          if (!this.hasCloud) return true;
+          this.status = 'syncing';
+          updateStorageBadges();
+          try {
+            // encodeURIComponent гарантирует чистый ASCII (1 символ = 1 байт)
+            const encoded = encodeURIComponent(JSON.stringify(data));
+            const chunks = [];
+            for (let i = 0; i < encoded.length; i += CHUNK_LIMIT) {
+              chunks.push(encoded.slice(i, i + CHUNK_LIMIT));
+            }
+
+            let oldCount = this.lastChunkCount;
+            if (oldCount === 0) {
+              try {
+                const oldMeta = await this._getItems(['fx_meta']);
+                if (oldMeta && oldMeta.fx_meta) {
+                  oldCount = Number(JSON.parse(oldMeta.fx_meta).chunks) || 0;
+                }
+              } catch (_) {}
+            }
+
+            // Сначала записываем все чанки
+            for (let i = 0; i < chunks.length; i++) {
+              await this._setItem('fx_c_' + i, chunks[i]);
+            }
+
+            // Затем обновляем метаданные
+            await this._setItem('fx_meta', JSON.stringify({
+              chunks: chunks.length,
+              updatedAt: data.updatedAt || Date.now(),
+              enc: 'uri',
+            }));
+
+            // Удаляем лишние старые чанки, если объем уменьшился
+            if (oldCount > chunks.length) {
+              const stale = [];
+              for (let i = chunks.length; i < oldCount; i++) stale.push('fx_c_' + i);
+              await this._removeItems(stale);
+            }
+
+            this.lastChunkCount = chunks.length;
+            this.status = 'cloud';
+            updateStorageBadges();
+            return true;
+          } catch (_) {
+            this.status = 'fallback';
+            updateStorageBadges();
+            return false;
+          }
+        },
+
+        scheduleSave(data) {
+          this.saveLocal(data);
+          if (!this.hasCloud) return;
+          clearTimeout(this.debounceTimer);
+          this.status = 'syncing';
+          updateStorageBadges();
+          this.debounceTimer = setTimeout(() => {
+            this.saveCloud(data);
+          }, 400);
+        },
+
+        getBadge() {
+          if (this.hasCloud) {
+            if (this.status === 'syncing') return { text: '☁️ Синхронизация...', cloud: true };
+            if (this.status === 'fallback') return { text: '☁️ Telegram Cloud (кэш)', cloud: true };
+            return { text: '☁️ Telegram Cloud', cloud: true };
+          }
+          return { text: '📱 Локально', cloud: false };
+        },
+      };
+
+      // =========================================================================
+      // 3. СПРАВОЧНИКИ, КАТЕГОРИИ, РЕЖИМЫ, НАСТАВНИК И ДЕМО-ДАННЫЕ
+      // =========================================================================
+      const CATEGORIES = [
+        { id: 'Еда', emoji: '🛒', color: '#f59e0b' },
+        { id: 'Маркетплейсы', emoji: '🛍️', color: '#a855f7' },
+        { id: 'Транспорт', emoji: '🚕', color: '#3b82f6' },
+        { id: 'Дом и ЖКХ', emoji: '🏠', color: '#10b981' },
+        { id: 'Долги', emoji: '💳', color: '#ef4444' },
+        { id: 'Здоровье', emoji: '💊', color: '#ec4899' },
+        { id: 'Досуг', emoji: '🎬', color: '#6366f1' },
+        { id: 'Прочее', emoji: '📦', color: '#8b949e' },
+      ];
+
+      const GOALS_MODES = [
+        { id: 'debts', title: 'Выйти из долгов', desc: 'Закрыть кредиты, кредитки и МФО быстрее', emoji: '🔥' },
+        { id: 'salary', title: 'Жить до зарплаты', desc: 'Понятный дневной лимит без кассовых разрывов', emoji: '🧭' },
+        { id: 'goal', title: 'Накопить на цель', desc: 'Отложить на подушку, технику или отпуск', emoji: '🎯' },
+        { id: 'family', title: 'Общий бюджет', desc: 'Прозрачные траты для пары или семьи', emoji: '🤝' },
+      ];
+
+      const TONES = [
+        {
+          id: 'friend',
+          title: 'Спокойный друг',
+          desc: 'Поддержка без осуждения и давления',
+          emoji: '🌿',
+          preview: '«Всё поправимо. Разберем цифры спокойно и найдем удобный темп.»',
+        },
+        {
+          id: 'sergeant',
+          title: 'Строгий сержант',
+          desc: 'Жесткая дисциплина и контроль импульсов',
+          emoji: '🫡',
+          preview: '«Отставить панику и маркетплейсы! Бьем по долгам строго по плану.»',
+        },
+        {
+          id: 'bro',
+          title: 'Свой парень с юмором',
+          desc: 'Живой язык и легкая самоирония',
+          emoji: '😎',
+          preview: '«Кофе был вкусный, но если не притормозим — до аванса дружим с гречкой.»',
+        },
+      ];
+
+      const MONTHS_RU = [
+        'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
+        'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь',
+      ];
+
+      function getTodayISO() {
+        const d = new Date();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return d.getFullYear() + '-' + m + '-' + day;
+      }
+
+      function formatRub(val) {
+        const n = Math.round(Number(val) || 0);
+        return n.toLocaleString('ru-RU') + ' ₽';
+      }
+
+      function esc(str) {
+        return String(str == null ? '' : str)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;');
+      }
+
+      function createEmptyState(name) {
+        return {
+          updatedAt: Date.now(),
+          onboarded: false,
+          userName: name || 'Друг',
+          mode: 'debts',
+          tone: 'bro',
+          balance: 25000,
+          mandatoryPayments: 9000,
+          daysUntilIncome: 12,
+          monthlyIncome: 80000,
+          debtStrategy: 'avalanche',
+          extraMonthlyPayment: 4000,
+          savedFromImpulse: 0,
+          streakDays: 1,
+          transactions: [],
+          debts: [],
+          wishlist: [],
+          goals: [
+            { id: 'g-1', name: 'Подушка безопасности', target: 100000, current: 0, emoji: '🛡️' },
+          ],
+        };
+      }
+
+      function createDemoState(name) {
+        const today = getTodayISO();
+        const now = Date.now();
+        const yestDate = new Date(now - 86400000);
+        const yest = yestDate.getFullYear() + '-' + String(yestDate.getMonth() + 1).padStart(2, '0') + '-' + String(yestDate.getDate()).padStart(2, '0');
+
+        return {
+          updatedAt: now,
+          onboarded: true,
+          userName: name || 'Алексей',
+          mode: 'debts',
+          tone: 'bro',
+          balance: 26800,
+          mandatoryPayments: 9500,
+          daysUntilIncome: 11,
+          monthlyIncome: 90000,
+          debtStrategy: 'avalanche',
+          extraMonthlyPayment: 5000,
+          savedFromImpulse: 5890,
+          streakDays: 7,
+          transactions: [
+            { id: 't1', title: 'Пятёрочка', amount: 1150, type: 'expense', category: 'Еда', date: today },
+            { id: 't2', title: 'Кофе с собой', amount: 240, type: 'expense', category: 'Еда', date: today },
+            { id: 't3', title: 'Яндекс Go такси', amount: 380, type: 'expense', category: 'Транспорт', date: yest },
+            { id: 't4', title: 'WB хозтовары', amount: 1290, type: 'expense', category: 'Маркетплейсы', date: yest },
+            { id: 't5', title: 'Аптека', amount: 620, type: 'expense', category: 'Здоровье', date: yest },
+          ],
+          debts: [
+            { id: 'd1', name: 'Кредитка Т-Банк', balance: 48000, rate: 29.9, minPayment: 4200, paymentDay: 25 },
+            { id: 'd2', name: 'Кредит Сбер', balance: 165000, rate: 21.5, minPayment: 8400, paymentDay: 15 },
+            { id: 'd3', name: 'Яндекс Сплит', balance: 18400, rate: 0, minPayment: 4600, paymentDay: 10 },
+          ],
+          wishlist: [
+            { id: 'w1', name: 'Кроссовки на WB', price: 6490, createdAt: now - 3600000 * 5 },
+          ],
+          goals: [
+            { id: 'g1', name: 'Подушка безопасности', target: 100000, current: 22500, emoji: '🛡️' },
+            { id: 'g2', name: 'Отпуск на море', target: 65000, current: 14000, emoji: '🌊' },
+          ],
+        };
+      }
+
+      // =========================================================================
+      // 4. РУССКИЙ NLP-ПАРСЕР ТРАТ И ДВИЖОК ТОНА ИИ-НАСТАВНИКА
+      // =========================================================================
+      const KEYWORD_MAP = {
+        Еда: ['пятерочк', 'пятёрочк', 'магнит', 'перекрест', 'перекрёст', 'лента', 'вкусвилл', 'дикси', 'ашан', 'кб', 'красное', 'кофе', 'кофейн', 'шаурм', 'шаверм', 'обед', 'ужин', 'завтрак', 'бургер', 'пицц', 'суши', 'роллы', 'столов', 'кафе', 'ресторан', 'продукт', 'хлеб', 'молок', 'доставк', 'самокат', 'лавка', 'вкусно', 'булочн', 'еда', 'чай', 'перекус'],
+        Маркетплейсы: ['wb', 'вб', 'wildberries', 'вайлдбер', 'ozon', 'озон', 'яндекс маркет', 'мегамаркет', 'алиэкспресс', 'lamoda', 'ламода', 'одежд', 'кроссовк', 'куртк', 'футболк', 'чехол', 'гаджет', 'наушник', 'косметик', 'обув', 'шмот'],
+        Транспорт: ['такси', 'яндекс го', 'яндекс go', 'uber', 'метро', 'автобус', 'трамвай', 'проезд', 'тройк', 'подорожник', 'бензин', 'азс', 'лукойл', 'газпром', 'роснефт', 'парковк', 'каршеринг', 'электричк', 'ржд', 'поезд', 'билет', 'мойка'],
+        'Дом и ЖКХ': ['жкх', 'квартплат', 'аренд', 'квартир', 'свет', 'вода', 'газ', 'интернет', 'ростелеком', 'мтс', 'билайн', 'мегафон', 'теле2', 'tele2', 'связь', 'ремонт', 'леруа', 'хозтовар', 'бытов', 'дом'],
+        Долги: ['кредит', 'ипотек', 'долг', 'кредитк', 'мфо', 'займ', 'рассрочк', 'сплит', 'долями', 'погашен'],
+        Здоровье: ['аптек', 'лекарств', 'врач', 'клиник', 'стоматолог', 'анализ', 'витамин', 'спортзал', 'фитнес', 'массаж', 'больниц'],
+        Досуг: ['кино', 'театр', 'бар', 'подписк', 'яндекс плюс', 'игр', 'steam', 'цветы', 'подарок', 'кальян', 'боулинг', 'концерт', 'пиво', 'вино'],
+      };
+
+      const INCOME_WORDS = ['зарплат', 'зп', 'аванс', 'зачислен', 'пришло', 'доход', 'преми', 'стипенд', 'кэшбэк', 'кешбэк', 'подработк', 'поступлен', 'вернули'];
+
+      function guessCategory(text) {
+        const lower = text.toLowerCase();
+        for (const cat in KEYWORD_MAP) {
+          if (KEYWORD_MAP[cat].some((w) => lower.indexOf(w) !== -1)) {
+            return cat;
+          }
+        }
+        return 'Прочее';
+      }
+
+      function parseQuickInput(raw) {
+        const clean = (raw || '').trim();
+        if (!clean) return [];
+
+        // Разбиваем фразу на отдельные операции по "и", запятым, точкам с запятой и переносам строк
+        const segments = clean
+          .split(/(?:\s+и\s+|;\s*|\n+|,\s*(?=[а-яА-Яa-zA-Z+-]))/i)
+          .map((s) => s.trim())
+          .filter(Boolean);
+
+        const today = getTodayISO();
+        const now = Date.now();
+        const parsed = [];
+
+        segments.forEach((seg, idx) => {
+          const m = seg.match(/([+-])?\s*(\d{1,3}(?:\s\d{3})+|\d+(?:[.,]\d{1,2})?)\s*(к|k|тыс\.?|р\.?|руб\.?|₽)?/i);
+          if (!m) return;
+
+          const sign = m[1];
+          let amount = parseFloat(m[2].replace(/\s+/g, '').replace(',', '.'));
+          if (isNaN(amount) || amount <= 0) return;
+
+          const unit = (m[3] || '').toLowerCase();
+          if (unit === 'к' || unit === 'k' || unit.indexOf('тыс') === 0) amount *= 1000;
+          amount = Math.round(amount);
+
+          const lower = seg.toLowerCase();
+          const isIncome = sign === '+' || INCOME_WORDS.some((w) => lower.indexOf(w) !== -1);
+
+          let title = seg
+            .replace(m[0], ' ')
+            .replace(/\b(покупка|оплата|списание|зачисление|перевод|карта|мир|visa|mastercard|рубли|рублей|руб|р)\b/gi, ' ')
+            .replace(/[₽*•:]/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+
+          if (!title) title = isIncome ? 'Пополнение' : 'Покупка';
+          else title = title.charAt(0).toUpperCase() + title.slice(1);
+
+          parsed.push({
+            id: 'tx-' + now + '-' + idx + '-' + Math.random().toString(36).slice(2, 6),
+            title,
+            amount,
+            type: isIncome ? 'income' : 'expense',
+            category: isIncome ? 'Доход' : guessCategory(seg),
+            date: today,
+          });
+        });
+
+        return parsed;
+      }
+
+      function getMentorText(tone, type, p) {
+        const d = p || {};
+        if (type === 'cash_gap') {
+          if (tone === 'sergeant') return 'Тревога! Дефицит ' + formatRub(d.deficit) + '. Отставить любые лишние траты, переходим в режим жесткой защиты бюджета!';
+          if (tone === 'bro') return 'Так, без паники — провалились на ' + formatRub(d.deficit) + '. Притормози необязательные траты или проверь остаток на картах, выплывем!';
+          return 'Сейчас намечается дефицит ' + formatRub(d.deficit) + '. Не переживай: поставим лишние траты на паузу и аккуратно пройдем дни до дохода.';
+        }
+        if (type === 'ok') {
+          if (tone === 'sergeant') return 'Лимит под контролем! Всё, что не потратишь сегодня, сработает в плюс завтра или ускорит закрытие долгов.';
+          if (tone === 'bro') return 'Идешь уверенно! Сэкономишь сегодня часть лимита — завтра дышать будет ещё легче.';
+          return 'Комфортный и спокойный темп. Ты уверенно держишься в рамках своего дневного ориентира.';
+        }
+        if (type === 'expense') {
+          if (tone === 'sergeant') return 'Расход ' + formatRub(d.amount) + ' зафиксирован. Дневной лимит пересчитан!';
+          if (tone === 'bro') return 'Улетело ' + formatRub(d.amount) + ' — записал! Надеюсь, покупка того стоила 😉';
+          return 'Записал ' + formatRub(d.amount) + '. Дневной ориентир обновился, всё под контролем.';
+        }
+        if (type === 'income') {
+          if (tone === 'sergeant') return 'Пополнение +' + formatRub(d.amount) + ' принято! Не трать всё сразу — укрепи подушку или досрочку.';
+          if (tone === 'bro') return 'Опа, +' + formatRub(d.amount) + '! Приятный плюс к балансу и настроению 🔥';
+          return 'Отличная новость: +' + formatRub(d.amount) + ' уже в балансе. Лимит вырос.';
+        }
+        if (type === 'stop') {
+          if (d.hours >= 12) {
+            if (tone === 'sergeant') return 'Это ' + d.hours + ' ч. твоей работы и ' + d.limits + ' дневных лимитов! Руки прочь от кнопки «Купить» — в холодильник на 24 часа!';
+            if (tone === 'bro') return 'Бро, ради этой штуки пахать ' + d.hours + ' ч. (' + d.limits + ' дн. бюджета). Кинь на сутки в холодильник — завтра скорее всего отпустит.';
+            return 'Покупка стоит ' + d.hours + ' ч. твоего времени (' + d.limits + ' дн. лимита). Пауза в 24 часа поможет принять спокойное решение.';
+          }
+          if (tone === 'sergeant') return d.hours + ' ч. работы на кону. Если вещи нет в списке нужного — остуди её 24 часа!';
+          if (tone === 'bro') return 'Вроде мелочь, а ' + d.hours + ' ч. смены уйдет. Подержи 24 часа на паузе, вдруг это просто магия маркетплейса.';
+          return 'Это примерно ' + d.hours + ' ч. твоей работы. Попробуй отложить на 24 часа — так легче отличить важное от импульса.';
+        }
+        return 'Шаг за шагом к финансовой свободе.';
+      }
+
+      // =========================================================================
+      // 5. ФИНАНСОВАЯ МАТЕМАТИКА: ДНЕВНОЙ ЛИМИТ И СИМУЛЯТОР АМОРТИЗАЦИИ ДОЛГОВ
+      // =========================================================================
+      function calcBudgetMetrics(st) {
+        const today = getTodayISO();
+        const todaySpent = st.transactions
+          .filter((t) => t.type === 'expense' && t.date === today)
+          .reduce((s, t) => s + (Number(t.amount) || 0), 0);
+
+        const days = Math.max(1, Math.round(Number(st.daysUntilIncome) || 1));
+        const balance = Number(st.balance) || 0;
+        const mandatory = Math.max(0, Number(st.mandatoryPayments) || 0);
+
+        // Формула: Math.floor((остаток_на_начало_дня - обязательные) / дней) - потрачено_сегодня
+        const freePoolNow = balance - mandatory;
+        const startOfDayPool = (balance + todaySpent) - mandatory;
+        const dailyPlan = Math.floor(startOfDayPool / days);
+        const freeToday = freePoolNow <= 0 ? Math.floor(freePoolNow) : dailyPlan - todaySpent;
+
+        const isGap = freeToday <= 0;
+        const deficit = isGap ? Math.abs(freeToday) : 0;
+        const spentPct = dailyPlan > 0 ? Math.min(100, Math.round((todaySpent / dailyPlan) * 100)) : 100;
+        const hourlyRate = Math.max(80, (Number(st.monthlyIncome) || 60000) / 168);
+
+        return {
+          today,
+          todaySpent,
+          days,
+          freePoolNow,
+          dailyPlan,
+          freeToday,
+          isGap,
+          deficit,
+          spentPct,
+          hourlyRate,
+        };
+      }
+
+      function simulateDebts(debts, strategy, extraMonthly) {
+        if (!debts || debts.length === 0) {
+          return { months: 0, totalInterest: 0, payoffLabel: 'Долгов нет!', ordered: [], warning: '' };
+        }
+
+        const priorityIds = debts
+          .slice()
+          .sort((a, b) => {
+            if (strategy === 'avalanche') {
+              if (b.rate !== a.rate) return b.rate - a.rate;
+              return a.balance - b.balance;
+            }
+            if (a.balance !== b.balance) return a.balance - b.balance;
+            return b.rate - a.rate;
+          })
+          .map((d) => d.id);
+
+        const list = debts.map((d) => ({
+          id: d.id,
+          name: d.name,
+          balance: Math.max(0, Number(d.balance) || 0),
+          remaining: Math.max(0, Number(d.balance) || 0),
+          rate: Math.max(0, Number(d.rate) || 0),
+          minPayment: Math.max(100, Number(d.minPayment) || 0),
+          paymentDay: d.paymentDay || 15,
+          priority: priorityIds.indexOf(d.id),
+          paidMonth: null,
+        }));
+
+        const totalMonthly = list.reduce((s, d) => s + d.minPayment, 0) + Math.max(0, Number(extraMonthly) || 0);
+        const startInterest = list.reduce((s, d) => s + (d.remaining * (d.rate / 100)) / 12, 0);
+        const warning = totalMonthly <= startInterest
+          ? 'Текущие платежи не покрывают начисленные проценты. Добавьте досрочную сумму ползунком.'
+          : '';
+
+        let month = 0;
+        let totalInterest = 0;
+        const MAX_M = 360;
+
+        while (month < MAX_M && list.some((d) => d.remaining > 0.5)) {
+          month += 1;
+          let budget = totalMonthly;
+
+          // 1. Начисление месячных процентов
+          for (let i = 0; i < list.length; i++) {
+            const d = list[i];
+            if (d.remaining <= 0.5) continue;
+            const interest = (d.remaining * (d.rate / 100)) / 12;
+            d.remaining += interest;
+            totalInterest += interest;
+          }
+
+          // 2. Обязательные минимальные платежи
+          for (let i = 0; i < list.length; i++) {
+            const d = list[i];
+            if (d.remaining <= 0.5) continue;
+            const pay = Math.min(d.remaining, d.minPayment, budget);
+            d.remaining -= pay;
+            budget -= pay;
+            if (d.remaining <= 0.5) {
+              d.remaining = 0;
+              if (d.paidMonth === null) d.paidMonth = month;
+            }
+          }
+
+          // 3. Вся досрочка + освободившиеся платежи бьют в приоритетный долг
+          if (budget > 0.5) {
+            const active = list.filter((d) => d.remaining > 0.5).sort((a, b) => a.priority - b.priority);
+            for (let i = 0; i < active.length; i++) {
+              if (budget <= 0.5) break;
+              const target = active[i];
+              const extra = Math.min(target.remaining, budget);
+              target.remaining -= extra;
+              budget -= extra;
+              if (target.remaining <= 0.5) {
+                target.remaining = 0;
+                if (target.paidMonth === null) target.paidMonth = month;
+              }
+            }
+          }
+        }
+
+        const now = new Date();
+        const endDate = new Date(now.getFullYear(), now.getMonth() + month, 1);
+        const payoffLabel = month >= MAX_M ? 'Более 30 лет' : MONTHS_RU[endDate.getMonth()] + ' ' + endDate.getFullYear();
+
+        const ordered = list
+          .slice()
+          .sort((a, b) => a.priority - b.priority)
+          .map((d) => {
+            const m = d.paidMonth || MAX_M;
+            const dt = new Date(now.getFullYear(), now.getMonth() + m, 1);
+            return Object.assign({}, d, {
+              payoffMonths: m,
+              payoffShort: m >= MAX_M ? '> 30 лет' : MONTHS_RU[dt.getMonth()].slice(0, 3) + ' ' + dt.getFullYear(),
+            });
+          });
+
+        return {
+          months: month,
+          totalInterest: Math.round(totalInterest),
+          payoffLabel,
+          ordered,
+          warning,
+        };
+      }
+
+      // =========================================================================
+      // 6. СОСТОЯНИЕ ПРИЛОЖЕНИЯ И ВСПОМОГАТЕЛЬНЫЕ UI-ФУНКЦИИ
+      // =========================================================================
+      let state = createEmptyState();
+      let activeTab = 'home'; // home | debts | stop | profile
+      let obStep = 1;
+      let obDraft = null;
+      let stopDraft = { name: '', price: '' };
+      let isListening = false;
+      let speechRec = null;
+
+      function persist(immediate) {
+        state.updatedAt = Date.now();
+        if (immediate) Storage.saveCloud(state);
+        else Storage.scheduleSave(state);
+      }
+
+      function updateStorageBadges() {
+        const badge = Storage.getBadge();
+        document.querySelectorAll('[data-storage-badge]').forEach((el) => {
+          el.textContent = badge.text;
+          el.classList.toggle('cloud', badge.cloud);
+        });
+      }
+
+      function showToast(message, variant) {
+        const root = document.getElementById('toast-root');
+        if (!root) return;
+        const div = document.createElement('div');
+        div.className = 'toast ' + (variant || 'info');
+        div.innerHTML = '<span>✨</span><span>' + esc(message) + '</span>';
+        root.appendChild(div);
+        setTimeout(() => {
+          div.style.opacity = '0';
+          div.style.transition = 'opacity 0.25s';
+          setTimeout(() => div.remove(), 260);
+        }, 3100);
+      }
+
+      // =========================================================================
+      // 7. МОДАЛЬНЫЕ ОКНА (ВМЕСТО ALERT И CONFIRM)
+      // =========================================================================
+      function closeModal() {
+        const mr = document.getElementById('modal-root');
+        if (mr) mr.innerHTML = '';
+      }
+
+      function openModal(innerHTML) {
+        const mr = document.getElementById('modal-root');
+        if (!mr) return;
+        mr.innerHTML =
+          '<div id="modal-bg" class="modal-backdrop">' +
+            '<div class="modal-sheet">' + innerHTML + '</div>' +
+          '</div>';
+        document.getElementById('modal-bg').addEventListener('click', (e) => {
+          if (e.target.id === 'modal-bg') closeModal();
+        });
+      }
+
+      function openManualTxModal() {
+        Storage.haptic('light');
+        let txType = 'expense';
+        let txCat = 'Еда';
+
+        function draw() {
+          openModal(
+            '<div class="row-between" style="margin-bottom:14px;">' +
+              '<h3 class="section-title">Новая операция</h3>' +
+              '<button type="button" id="m-x" class="icon-btn" style="width:32px;height:32px;">' + SVG.x + '</button>' +
+            '</div>' +
+            '<form id="m-tx-form" class="stack">' +
+              '<div class="segmented">' +
+                '<button type="button" data-tt="expense" class="seg-btn ' + (txType === 'expense' ? 'active red' : '') + '">Расход</button>' +
+                '<button type="button" data-tt="income" class="seg-btn ' + (txType === 'income' ? 'active emerald' : '') + '">Доход</button>' +
+              '</div>' +
+              '<input id="m-tx-amt" class="input input-lg" type="number" inputmode="numeric" required placeholder="Сумма в ₽" />' +
+              '<input id="m-tx-title" class="input" type="text" placeholder="Комментарий (например, Пятерочка)" />' +
+              (txType === 'expense'
+                ? '<div class="grid-4">' +
+                    CATEGORIES.map((c) =>
+                      '<button type="button" data-tc="' + c.id + '" class="cat-btn ' + (txCat === c.id ? 'active' : '') + '">' +
+                        '<span style="font-size:18px;">' + c.emoji + '</span>' +
+                        '<span>' + (c.id === 'Маркетплейсы' ? 'WB/Ozon' : c.id === 'Дом и ЖКХ' ? 'ЖКХ' : c.id) + '</span>' +
+                      '</button>'
+                    ).join('') +
+                  '</div>'
+                : '') +
+              '<button type="submit" class="btn btn-primary btn-block">Сохранить операцию</button>' +
+            '</form>'
+          );
+
+          document.getElementById('m-x').onclick = closeModal;
+          document.querySelectorAll('[data-tt]').forEach((b) => {
+            b.onclick = () => { txType = b.dataset.tt; draw(); };
+          });
+          document.querySelectorAll('[data-tc]').forEach((b) => {
+            b.onclick = () => { txCat = b.dataset.tc; draw(); };
+          });
+          document.getElementById('m-tx-form').onsubmit = (e) => {
+            e.preventDefault();
+            const amount = Math.round(Number(document.getElementById('m-tx-amt').value));
+            const title = document.getElementById('m-tx-title').value.trim();
+            if (!amount || amount <= 0) return showToast('Введите сумму больше 0', 'warn');
+
+            state.balance += txType === 'income' ? amount : -amount;
+            state.transactions.unshift({
+              id: 'tx-' + Date.now(),
+              title: title || (txType === 'income' ? 'Пополнение' : txCat),
+              amount,
+              type: txType,
+              category: txType === 'income' ? 'Доход' : txCat,
+              date: getTodayISO(),
+            });
+            persist();
+            closeModal();
+            Storage.haptic('medium');
+            showToast(getMentorText(state.tone, txType, { amount }), 'success');
+            render();
+          };
+        }
+
+        draw();
+      }
+
+      function openLazySyncModal() {
+        Storage.haptic('light');
+        openModal(
+          '<div class="row-between" style="margin-bottom:10px;">' +
+            '<h3 class="section-title">Ленивый режим — сверка остатка</h3>' +
+            '<button type="button" id="m-x" class="icon-btn" style="width:32px;height:32px;">' + SVG.x + '</button>' +
+          '</div>' +
+          '<p class="muted" style="margin:0 0 14px;line-height:1.5;">Забыли записать мелкие траты? Просто введите реальный остаток на картах — разницу мы мягко запишем как «Неучтенное» и пересчитаем дневной лимит.</p>' +
+          '<form id="m-lazy-form" class="stack">' +
+            '<div>' +
+              '<label class="label">Сейчас в FinExit: ' + formatRub(state.balance) + '</label>' +
+              '<input id="m-lazy-val" class="input input-lg" type="number" inputmode="numeric" required value="' + Math.round(state.balance) + '" placeholder="Реальный остаток ₽" />' +
+            '</div>' +
+            '<button type="submit" class="btn btn-primary btn-block">Обновить остаток</button>' +
+          '</form>'
+        );
+        document.getElementById('m-x').onclick = closeModal;
+        document.getElementById('m-lazy-form').onsubmit = (e) => {
+          e.preventDefault();
+          const real = Math.round(Number(document.getElementById('m-lazy-val').value));
+          if (isNaN(real) || real < 0) return showToast('Введите корректный остаток', 'warn');
+          const diff = state.balance - real;
+          if (diff === 0) {
+            closeModal();
+            return showToast('Копейка в копейку! Расхождений нет.', 'success');
+          }
+          state.balance = real;
+          state.transactions.unshift({
+            id: 'sync-' + Date.now(),
+            title: diff > 0 ? 'Неучтенное' : 'Нашлось при сверке',
+            amount: Math.abs(diff),
+            type: diff > 0 ? 'expense' : 'income',
+            category: diff > 0 ? 'Прочее' : 'Доход',
+            date: getTodayISO(),
+          });
+          persist();
+          closeModal();
+          Storage.haptic('medium');
+          showToast(diff > 0 ? 'Списали ' + formatRub(diff) + ' в «Неучтенное». Лимит обновлен!' : 'Нашлось +' + formatRub(Math.abs(diff)) + '! Приятный бонус.', 'success');
+          render();
+        };
+      }
+
+      function openAddDebtModal() {
+        Storage.haptic('light');
+        openModal(
+          '<div class="row-between" style="margin-bottom:14px;">' +
+            '<h3 class="section-title">Добавить долг</h3>' +
+            '<button type="button" id="m-x" class="icon-btn" style="width:32px;height:32px;">' + SVG.x + '</button>' +
+          '</div>' +
+          '<form id="m-debt-form" class="stack">' +
+            '<div>' +
+              '<label class="label">Название (кредит, карта, МФО, ипотека)</label>' +
+              '<input id="md-name" class="input" type="text" required placeholder="Например, Кредитка Альфа" />' +
+            '</div>' +
+            '<div class="grid-2">' +
+              '<div><label class="label">Остаток долга (₽)</label><input id="md-bal" class="input" type="number" inputmode="numeric" required placeholder="50000" /></div>' +
+              '<div><label class="label">Ставка (% год.)</label><input id="md-rate" class="input" type="number" step="0.1" value="24" /></div>' +
+            '</div>' +
+            '<div class="grid-2">' +
+              '<div><label class="label">Мин. платеж (₽/мес)</label><input id="md-min" class="input" type="number" inputmode="numeric" required placeholder="4500" /></div>' +
+              '<div><label class="label">День платежа (1–31)</label><input id="md-day" class="input" type="number" min="1" max="31" value="15" /></div>' +
+            '</div>' +
+            '<button type="submit" class="btn btn-primary btn-block">Добавить в план</button>' +
+          '</form>'
+        );
+        document.getElementById('m-x').onclick = closeModal;
+        document.getElementById('m-debt-form').onsubmit = (e) => {
+          e.preventDefault();
+          const name = document.getElementById('md-name').value.trim();
+          const balance = Math.round(Number(document.getElementById('md-bal').value));
+          const rate = Math.max(0, parseFloat(document.getElementById('md-rate').value) || 0);
+          const minPayment = Math.round(Number(document.getElementById('md-min').value));
+          const paymentDay = Math.min(31, Math.max(1, Math.round(Number(document.getElementById('md-day').value) || 15)));
+          if (!name || !balance || balance <= 0 || !minPayment || minPayment <= 0) {
+            return showToast('Заполните все обязательные поля', 'warn');
+          }
+          state.debts.push({ id: 'd-' + Date.now(), name, balance, rate, minPayment, paymentDay });
+          persist();
+          closeModal();
+          Storage.haptic('medium');
+          showToast('Долг добавлен в «Убийцу долгов»', 'success');
+          render();
+        };
+      }
+
+      function openAddGoalModal() {
+        Storage.haptic('light');
+        let emoji = '🎯';
+        const emojis = ['🎯', '🛡️', '📱', '✈️', '🚗', '🏠'];
+
+        function draw() {
+          openModal(
+            '<div class="row-between" style="margin-bottom:14px;">' +
+              '<h3 class="section-title">Новая копилка</h3>' +
+              '<button type="button" id="m-x" class="icon-btn" style="width:32px;height:32px;">' + SVG.x + '</button>' +
+            '</div>' +
+            '<form id="m-goal-form" class="stack">' +
+              '<div style="display:grid;grid-template-columns:repeat(6,1fr);gap:6px;">' +
+                emojis.map((em) =>
+                  '<button type="button" data-ge="' + em + '" class="btn btn-sm ' + (emoji === em ? 'btn-primary' : 'btn-soft') + '" style="font-size:18px;padding:8px 0;">' + em + '</button>'
+                ).join('') +
+              '</div>' +
+              '<input id="mg-name" class="input" type="text" required placeholder="На что копим?" />' +
+              '<div class="grid-2">' +
+                '<input id="mg-target" class="input" type="number" inputmode="numeric" required placeholder="Цель (₽)" />' +
+                '<input id="mg-cur" class="input" type="number" inputmode="numeric" placeholder="Уже есть (₽)" />' +
+              '</div>' +
+              '<button type="submit" class="btn btn-primary btn-block">Создать копилку</button>' +
+            '</form>'
+          );
+          document.getElementById('m-x').onclick = closeModal;
+          document.querySelectorAll('[data-ge]').forEach((b) => {
+            b.onclick = () => { emoji = b.dataset.ge; draw(); };
+          });
+          document.getElementById('m-goal-form').onsubmit = (e) => {
+            e.preventDefault();
+            const name = document.getElementById('mg-name').value.trim();
+            const target = Math.round(Number(document.getElementById('mg-target').value));
+            const current = Math.max(0, Math.round(Number(document.getElementById('mg-cur').value) || 0));
+            if (!name || !target || target <= 0) return showToast('Укажите название и сумму цели', 'warn');
+            state.goals.push({ id: 'g-' + Date.now(), name, target, current, emoji });
+            persist();
+            closeModal();
+            showToast('Копилка добавлена!', 'success');
+            render();
+          };
+        }
+
+        draw();
+      }
+
+      function openConfirmResetModal() {
+        Storage.haptic('light');
+        openModal(
+          '<h3 class="section-title" style="margin-bottom:8px;">Сбросить все данные?</h3>' +
+          '<p class="muted" style="margin:0 0 16px;line-height:1.5;">Все операции, долги, копилки и настройки будут очищены, и откроется стартовый онбординг.</p>' +
+          '<div class="grid-2">' +
+            '<button type="button" id="mc-no" class="btn btn-soft">Отмена</button>' +
+            '<button type="button" id="mc-yes" class="btn" style="background:var(--red);color:#fff;">Сбросить</button>' +
+          '</div>'
+        );
+        document.getElementById('mc-no').onclick = closeModal;
+        document.getElementById('mc-yes').onclick = () => {
+          closeModal();
+          state = createEmptyState(Storage.userName || 'Друг');
+          obStep = 1;
+          obDraft = null;
+          activeTab = 'home';
+          persist(true);
+          showToast('Данные сброшены', 'info');
+          render();
+        };
+      }
+
+      // =========================================================================
+      // 8. ГОЛОСОВОЙ ВВОД (WEB SPEECH API RU-RU)
+      // =========================================================================
+      function toggleVoice() {
+        Storage.haptic('light');
+        const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SR) {
+          showToast('Голосовой ввод не поддерживается в этом браузере — введите трату текстом', 'warn');
+          return;
+        }
+        if (isListening && speechRec) {
+          speechRec.stop();
+          isListening = false;
+          return;
+        }
+        try {
+          speechRec = new SR();
+          speechRec.lang = 'ru-RU';
+          speechRec.interimResults = false;
+          speechRec.maxAlternatives = 1;
+          speechRec.onstart = () => {
+            isListening = true;
+            const b = document.getElementById('voice-btn');
+            if (b) b.classList.add('listening');
+          };
+          speechRec.onend = () => {
+            isListening = false;
+            const b = document.getElementById('voice-btn');
+            if (b) b.classList.remove('listening');
+          };
+          speechRec.onerror = () => {
+            isListening = false;
+            showToast('Не удалось распознать голос. Проверьте доступ к микрофону.', 'warn');
+          };
+          speechRec.onresult = (ev) => {
+            const text = ev.results && ev.results[0] && ev.results[0][0] ? ev.results[0][0].transcript : '';
+            const inp = document.getElementById('quick-input');
+            if (text && inp) {
+              inp.value = inp.value ? inp.value + ' ' + text : text;
+              showToast('Услышал: «' + text + '» — нажмите отправить', 'info');
+            }
+          };
+          speechRec.start();
+        } catch (_) {
+          isListening = false;
+          showToast('Браузер заблокировал микрофон', 'warn');
+        }
+      }
+
+      // =========================================================================
+      // 9. ГЕНЕРАТОР КАРТОЧКИ ПРОГРЕССА ДЛЯ STORIES (HTML5 CANVAS)
+      // =========================================================================
+      function drawStoriesCard() {
+        const canvas = document.getElementById('stories-canvas');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        const W = 540;
+        const H = 960;
+        canvas.width = W;
+        canvas.height = H;
+
+        // Фон
+        const bg = ctx.createLinearGradient(0, 0, W, H);
+        bg.addColorStop(0, '#0f172a');
+        bg.addColorStop(0.55, '#0d1117');
+        bg.addColorStop(1, '#052e23');
+        ctx.fillStyle = bg;
+        ctx.fillRect(0, 0, W, H);
+
+        // Световые акценты
+        const g1 = ctx.createRadialGradient(460, 140, 10, 460, 140, 260);
+        g1.addColorStop(0, 'rgba(16, 185, 129, 0.28)');
+        g1.addColorStop(1, 'rgba(16, 185, 129, 0)');
+        ctx.fillStyle = g1;
+        ctx.fillRect(0, 0, W, H);
+
+        const g2 = ctx.createRadialGradient(80, 810, 10, 80, 810, 260);
+        g2.addColorStop(0, 'rgba(59, 130, 246, 0.24)');
+        g2.addColorStop(1, 'rgba(59, 130, 246, 0)');
+        ctx.fillStyle = g2;
+        ctx.fillRect(0, 0, W, H);
+
+        function roundRect(x, y, w, h, r) {
+          ctx.beginPath();
+          ctx.moveTo(x + r, y);
+          ctx.arcTo(x + w, y, x + w, y + h, r);
+          ctx.arcTo(x + w, y + h, x, y + h, r);
+          ctx.arcTo(x, y + h, x, y, r);
+          ctx.arcTo(x, y, x + w, y, r);
+          ctx.closePath();
+        }
+
+        // Логотип FinExit
+        roundRect(44, 56, 178, 52, 26);
+        ctx.fillStyle = '#10b981';
+        ctx.fill();
+        ctx.fillStyle = '#042419';
+        ctx.font = '900 23px -apple-system, BlinkMacSystemFont, sans-serif';
+        ctx.fillText('₽  FinExit', 68, 90);
+
+        const now = new Date();
+        ctx.fillStyle = 'rgba(240,246,252,0.55)';
+        ctx.font = '600 18px -apple-system, BlinkMacSystemFont, sans-serif';
+        ctx.fillText(MONTHS_RU[now.getMonth()] + ' ' + now.getFullYear(), 345, 90);
+
+        // Заголовок
+        ctx.fillStyle = '#f0f6fc';
+        ctx.font = '900 44px -apple-system, BlinkMacSystemFont, sans-serif';
+        ctx.fillText('Выхожу в плюс', 44, 200);
+        ctx.fillText('шаг за шагом', 44, 254);
+        ctx.fillStyle = '#10b981';
+        ctx.fillText('без стресса', 44, 308);
+
+        const baseSim = simulateDebts(state.debts, state.debtStrategy, 0);
+        const activeSim = simulateDebts(state.debts, state.debtStrategy, state.extraMonthlyPayment);
+        const monthsSaved = Math.max(0, baseSim.months - activeSim.months);
+
+        // Карточка 1: Серия
+        roundRect(44, 365, 452, 136, 26);
+        ctx.fillStyle = 'rgba(255,255,255,0.06)';
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        ctx.fillStyle = '#8b949e';
+        ctx.font = '700 17px -apple-system, BlinkMacSystemFont, sans-serif';
+        ctx.fillText('КОНТРОЛЬ ДНЕВНОГО ЛИМИТА', 70, 408);
+        ctx.fillStyle = '#f0f6fc';
+        ctx.font = '900 42px -apple-system, BlinkMacSystemFont, sans-serif';
+        ctx.fillText((state.streakDays || 1) + ' дн. в ритме 🔥', 70, 466);
+
+        // Карточка 2: Ускорение по долгам (без раскрытия приватной суммы долга!)
+        roundRect(44, 523, 452, 136, 26);
+        ctx.fillStyle = 'rgba(59, 130, 246, 0.12)';
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(59, 130, 246, 0.35)';
+        ctx.stroke();
+
+        ctx.fillStyle = '#93c5fd';
+        ctx.font = '700 17px -apple-system, BlinkMacSystemFont, sans-serif';
+        if (state.debts.length > 0 && monthsSaved > 0) {
+          ctx.fillText('УСКОРЕНИЕ ВЫХОДА ИЗ ДОЛГОВ', 70, 566);
+          ctx.fillStyle = '#f0f6fc';
+          ctx.font = '900 40px -apple-system, BlinkMacSystemFont, sans-serif';
+          ctx.fillText('Раньше на ' + monthsSaved + ' мес.', 70, 624);
+        } else if (state.debts.length > 0) {
+          ctx.fillText('ЦЕЛЬ ФИНАНСОВОЙ СВОБОДЫ', 70, 566);
+          ctx.fillStyle = '#f0f6fc';
+          ctx.font = '900 36px -apple-system, BlinkMacSystemFont, sans-serif';
+          ctx.fillText(activeSim.payoffLabel, 70, 624);
+        } else {
+          ctx.fillText('СТАТУС ПО КРЕДИТАМ', 70, 566);
+          ctx.fillStyle = '#34d399';
+          ctx.font = '900 38px -apple-system, BlinkMacSystemFont, sans-serif';
+          ctx.fillText('Свобода от долгов ✨', 70, 624);
+        }
+
+        // Карточка 3: Спасено на Стоп-кране
+        roundRect(44, 681, 452, 136, 26);
+        ctx.fillStyle = 'rgba(16, 185, 129, 0.14)';
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(16, 185, 129, 0.4)';
+        ctx.stroke();
+
+        ctx.fillStyle = '#6ee7b7';
+        ctx.font = '700 17px -apple-system, BlinkMacSystemFont, sans-serif';
+        ctx.fillText('СПАСЕНО НА СТОП-КРАНЕ WB/OZON', 70, 724);
+        ctx.fillStyle = '#10b981';
+        ctx.font = '900 42px -apple-system, BlinkMacSystemFont, sans-serif';
+        ctx.fillText(state.savedFromImpulse > 0 ? formatRub(state.savedFromImpulse) : 'Импульсы под замком', 70, 782);
+
+        // Подвал
+        ctx.fillStyle = '#8b949e';
+        ctx.font = '500 17px -apple-system, BlinkMacSystemFont, sans-serif';
+        ctx.fillText('Приватный отчет • точные суммы счетов скрыты', 44, 892);
+        ctx.fillStyle = '#10b981';
+        ctx.font = '800 18px -apple-system, BlinkMacSystemFont, sans-serif';
+        ctx.fillText('#FinExit  #финансыподконтролем', 44, 924);
+      }
+
+      // =========================================================================
+      // 10. РЕНДЕР ОНБОРДИНГА И 4 ВКЛАДОК
+      // =========================================================================
+      function renderOnboarding() {
+        if (!obDraft) {
+          obDraft = {
+            mode: state.mode,
+            tone: state.tone,
+            balance: String(state.balance),
+            mandatoryPayments: String(state.mandatoryPayments),
+            daysUntilIncome: String(state.daysUntilIncome),
+            monthlyIncome: String(state.monthlyIncome),
+          };
+        }
+
+        const previewDaily = () => {
+          const b = Number(obDraft.balance) || 0;
+          const m = Number(obDraft.mandatoryPayments) || 0;
+          const d = Math.max(1, Number(obDraft.daysUntilIncome) || 1);
+          return Math.floor((b - m) / d);
+        };
+
+        const root = document.getElementById('app-root');
+        root.innerHTML =
+          '<div class="ob-wrap">' +
+            '<div>' +
+              '<div class="row-between">' +
+                '<div class="brand-row">' +
+                  '<div class="brand-logo">₽</div>' +
+                  '<div>' +
+                    '<div class="brand-title">FinExit</div>' +
+                    '<div class="sync-badge ' + (Storage.getBadge().cloud ? 'cloud' : '') + '" data-storage-badge>' + Storage.getBadge().text + '</div>' +
+                  '</div>' +
+                '</div>' +
+                '<button id="ob-demo" class="btn btn-sm" style="background:var(--emerald-soft);color:var(--emerald);border:1px solid rgba(16,185,129,0.35);">✨ Демо-данные</button>' +
+              '</div>' +
+
+              '<div class="ob-steps">' +
+                [1, 2, 3].map((s) => '<div class="ob-step-bar ' + (s <= obStep ? 'active' : '') + '"></div>').join('') +
+              '</div>' +
+
+              (obStep === 1
+                ? '<div class="stack anim-in">' +
+                    '<div><h1 style="font-size:24px;font-weight:900;margin:0 0 6px;">Какая главная цель?</h1><p class="muted" style="margin:0;">Подстроим FinExit под вашу задачу за 60 секунд.</p></div>' +
+                    GOALS_MODES.map((m) =>
+                      '<button data-obmode="' + m.id + '" class="choice-card ' + (obDraft.mode === m.id ? 'selected' : '') + '">' +
+                        '<span class="choice-emoji">' + m.emoji + '</span>' +
+                        '<div><div style="font-weight:700;font-size:15px;">' + m.title + '</div><div class="muted" style="margin-top:3px;">' + m.desc + '</div></div>' +
+                      '</button>'
+                    ).join('') +
+                  '</div>'
+                : '') +
+
+              (obStep === 2
+                ? '<div class="stack anim-in">' +
+                    '<div><h1 style="font-size:24px;font-weight:900;margin:0 0 6px;">Характер ИИ-наставника</h1><p class="muted" style="margin:0;">Никакого стыда за траты — выберите комфортный тон.</p></div>' +
+                    TONES.map((t) =>
+                      '<button data-obtone="' + t.id + '" class="choice-card ' + (obDraft.tone === t.id ? 'selected' : '') + '" style="flex-direction:column;gap:8px;">' +
+                        '<div style="display:flex;align-items:center;gap:10px;"><span style="font-size:22px;">' + t.emoji + '</span><div><div style="font-weight:700;font-size:15px;">' + t.title + '</div><div class="muted">' + t.desc + '</div></div></div>' +
+                        '<div class="card-soft" style="width:100%;font-size:12px;font-style:italic;color:#c9d1d9;">' + t.preview + '</div>' +
+                      '</button>'
+                    ).join('') +
+                  '</div>'
+                : '') +
+
+              (obStep === 3
+                ? '<div class="stack anim-in">' +
+                    '<div><h1 style="font-size:24px;font-weight:900;margin:0 0 6px;">Базовые цифры</h1><p class="muted" style="margin:0;">Пароли от банков не нужны. Данные хранятся только у вас.</p></div>' +
+                    '<div class="card stack">' +
+                      '<div><label class="label">Текущий свободный остаток на руках/картах (₽)</label><input id="ob-bal" class="input input-lg" type="number" inputmode="numeric" value="' + esc(obDraft.balance) + '" /></div>' +
+                      '<div><label class="label">Обязательные платежи до дохода — кредиты, жилье, ЖКХ (₽)</label><input id="ob-mand" class="input input-lg" type="number" inputmode="numeric" value="' + esc(obDraft.mandatoryPayments) + '" /></div>' +
+                      '<div class="grid-2">' +
+                        '<div><label class="label">Дней до дохода</label><input id="ob-days" class="input" type="number" inputmode="numeric" min="1" value="' + esc(obDraft.daysUntilIncome) + '" /></div>' +
+                        '<div><label class="label">Доход в месяц (₽)</label><input id="ob-inc" class="input" type="number" inputmode="numeric" value="' + esc(obDraft.monthlyIncome) + '" /></div>' +
+                      '</div>' +
+                    '</div>' +
+                    '<div class="card" style="background:var(--emerald-soft);border-color:rgba(16,185,129,0.4);">' +
+                      '<div class="row-between">' +
+                        '<div><div style="font-size:12px;font-weight:700;color:var(--emerald);">Свободно на сегодня</div><div id="ob-prev" style="font-size:26px;font-weight:900;margin-top:2px;">' + formatRub(previewDaily()) + '</div></div>' +
+                        '<span style="font-size:28px;">🧭</span>' +
+                      '</div>' +
+                    '</div>' +
+                  '</div>'
+                : '') +
+            '</div>' +
+
+            '<div style="display:flex;gap:10px;">' +
+              (obStep > 1 ? '<button id="ob-back" class="btn btn-soft" style="min-width:92px;">Назад</button>' : '') +
+              '<button id="ob-next" class="btn btn-primary" style="flex:1;">' + (obStep < 3 ? 'Продолжить →' : 'Запустить FinExit ✨') + '</button>' +
+            '</div>' +
+          '</div>';
+
+        document.getElementById('ob-demo').onclick = () => {
+          Storage.haptic('medium');
+          state = createDemoState(Storage.userName || 'Алексей');
+          persist(true);
+          showToast('Демо-данные загружены! Попробуйте быстрый ввод и ползунок долгов.', 'success');
+          render();
+        };
+
+        document.querySelectorAll('[data-obmode]').forEach((b) => {
+          b.onclick = () => { Storage.haptic('light'); obDraft.mode = b.dataset.obmode; renderOnboarding(); };
+        });
+
+        document.querySelectorAll('[data-obtone]').forEach((b) => {
+          b.onclick = () => { Storage.haptic('light'); obDraft.tone = b.dataset.obtone; renderOnboarding(); };
+        });
+
+        if (obStep === 3) {
+          const updatePrev = () => {
+            obDraft.balance = document.getElementById('ob-bal').value;
+            obDraft.mandatoryPayments = document.getElementById('ob-mand').value;
+            obDraft.daysUntilIncome = document.getElementById('ob-days').value;
+            obDraft.monthlyIncome = document.getElementById('ob-inc').value;
+            const el = document.getElementById('ob-prev');
+            if (el) el.textContent = formatRub(previewDaily());
+          };
+          ['ob-bal', 'ob-mand', 'ob-days', 'ob-inc'].forEach((id) => {
+            document.getElementById(id).addEventListener('input', updatePrev);
+          });
+        }
+
+        const back = document.getElementById('ob-back');
+        if (back) back.onclick = () => { obStep -= 1; renderOnboarding(); };
+
+        document.getElementById('ob-next').onclick = () => {
+          Storage.haptic('medium');
+          if (obStep < 3) {
+            obStep += 1;
+            renderOnboarding();
+          } else {
+            state.onboarded = true;
+            state.mode = obDraft.mode;
+            state.tone = obDraft.tone;
+            state.balance = Math.max(0, Math.round(Number(obDraft.balance) || 0));
+            state.mandatoryPayments = Math.max(0, Math.round(Number(obDraft.mandatoryPayments) || 0));
+            state.daysUntilIncome = Math.max(1, Math.round(Number(obDraft.daysUntilIncome) || 10));
+            state.monthlyIncome = Math.max(5000, Math.round(Number(obDraft.monthlyIncome) || 60000));
+            persist(true);
+            showToast('FinExit настроен! Запишите первую трату в строку ниже.', 'success');
+            render();
+          }
+        };
+      }
+
+      // ---- ВКЛАДКА 1: ГЛАВНАЯ ----
+      function htmlHomeTab(m) {
+        const toneObj = TONES.find((t) => t.id === state.tone) || TONES[0];
+
+        // Сводка по категориям
+        const expenses = state.transactions.filter((t) => t.type === 'expense');
+        const totalExp = expenses.reduce((s, t) => s + t.amount, 0);
+        const catTotals = {};
+        expenses.forEach((t) => { catTotals[t.category] = (catTotals[t.category] || 0) + t.amount; });
+        const catRows = CATEGORIES.map((c) => ({
+          id: c.id,
+          emoji: c.emoji,
+          color: c.color,
+          amount: catTotals[c.id] || 0,
+          pct: totalExp > 0 ? Math.round(((catTotals[c.id] || 0) / totalExp) * 100) : 0,
+        })).filter((r) => r.amount > 0).sort((a, b) => b.amount - a.amount);
+
+        return (
+          // Герой-карточка
+          '<section class="hero-card ' + (m.isGap ? 'danger' : '') + ' anim-in">' +
+            '<div class="hero-top">' +
+              '<span class="hero-label">' + (m.isGap ? '⚠️ Кассовый разрыв' : '🧭 Свободно на сегодня') + '</span>' +
+              '<span class="pill">До дохода: ' + m.days + ' дн.</span>' +
+            '</div>' +
+            '<div class="hero-amount">' + (m.isGap ? '−' + formatRub(m.deficit) : formatRub(m.freeToday)) + '</div>' +
+            (!m.isGap
+              ? '<div style="margin-bottom:12px;">' +
+                  '<div class="row-between" style="font-size:11px;color:#c9d1d9;margin-bottom:5px;">' +
+                    '<span>Потрачено сегодня: <b>' + formatRub(m.todaySpent) + '</b></span>' +
+                    '<span>План дня: <b>' + formatRub(m.dailyPlan) + '</b></span>' +
+                  '</div>' +
+                  '<div class="progress-track"><div class="progress-fill" style="width:' + m.spentPct + '%;background:' + (m.spentPct >= 90 ? 'var(--amber)' : 'var(--emerald)') + ';"></div></div>' +
+                '</div>'
+              : '') +
+            '<div class="mentor-box"><b>' + toneObj.emoji + '</b> ' + esc(getMentorText(state.tone, m.isGap ? 'cash_gap' : 'ok', { deficit: m.deficit })) + '</div>' +
+            '<div class="hero-stats">' +
+              '<div><div class="stat-label">На картах</div><div class="stat-val">' + formatRub(state.balance) + '</div></div>' +
+              '<div><div class="stat-label">Обязательно</div><div class="stat-val">' + formatRub(state.mandatoryPayments) + '</div></div>' +
+              '<div><div class="stat-label">Сегодня</div><div class="stat-val">' + formatRub(m.todaySpent) + '</div></div>' +
+            '</div>' +
+          '</section>' +
+
+          // Умный быстрый ввод
+          '<section class="card stack">' +
+            '<div class="row-between">' +
+              '<span style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:0.04em;color:var(--emerald);">⚡ Быстрый ввод</span>' +
+              '<span class="muted">Несколько трат одной фразой</span>' +
+            '</div>' +
+            '<form id="quick-form" class="quick-row">' +
+              '<div class="quick-input-wrap">' +
+                '<input id="quick-input" class="input" type="text" placeholder="Пятерочка 1450 и кофе 250" />' +
+                '<button id="voice-btn" type="button" class="voice-btn ' + (isListening ? 'listening' : '') + '" title="Голосовой ввод">' + SVG.mic + '</button>' +
+              '</div>' +
+              '<button type="submit" class="btn btn-primary" style="width:46px;height:46px;padding:0;flex-shrink:0;" title="Отправить">' + SVG.send + '</button>' +
+            '</form>' +
+            '<div class="chips-row">' +
+              ['Пятерочка 1450 и кофе 250', 'такси 380, wb 1200', 'аванс +25000'].map((ex) =>
+                '<button type="button" class="chip" data-chip="' + esc(ex) + '">' + esc(ex) + '</button>'
+              ).join('') +
+            '</div>' +
+            '<div class="grid-2">' +
+              '<button id="btn-add-tx" type="button" class="btn btn-soft btn-sm">' + SVG.plus + ' Операция</button>' +
+              '<button id="btn-lazy-sync" type="button" class="btn btn-soft btn-sm"><span style="color:var(--emerald);display:flex;">' + SVG.refresh + '</span> Сверить остаток</button>' +
+            '</div>' +
+          '</section>' +
+
+          // Список последних операций
+          '<section class="stack-sm">' +
+            '<div class="row-between" style="padding:0 4px;">' +
+              '<h2 class="section-title">Последние операции</h2>' +
+              '<span class="muted">' + state.transactions.length + ' шт.</span>' +
+            '</div>' +
+            (state.transactions.length === 0
+              ? '<div class="empty-box"><div style="font-size:26px;margin-bottom:6px;">🧾</div><div style="font-weight:700;font-size:14px;">Пока нет операций</div><div class="muted" style="margin-top:4px;">Напишите выше «такси 380, wb 1200» — всё разложится само.</div></div>'
+              : '<div class="tx-list">' +
+                  state.transactions.slice(0, 15).map((tx) => {
+                    const c = CATEGORIES.find((x) => x.id === tx.category);
+                    const em = tx.type === 'income' ? '💵' : (c ? c.emoji : '📦');
+                    return (
+                      '<div class="tx-item">' +
+                        '<div class="tx-left">' +
+                          '<div class="tx-icon">' + em + '</div>' +
+                          '<div style="min-width:0;">' +
+                            '<div class="tx-title">' + esc(tx.title) + '</div>' +
+                            '<div class="tx-meta">' + esc(tx.category) + ' • ' + (tx.date === m.today ? 'Сегодня' : tx.date.slice(5).split('-').reverse().join('.')) + '</div>' +
+                          '</div>' +
+                        '</div>' +
+                        '<div class="tx-right">' +
+                          '<span class="tx-sum ' + (tx.type === 'income' ? 'inc' : '') + '">' + (tx.type === 'income' ? '+' : '−') + formatRub(tx.amount) + '</span>' +
+                          '<button type="button" class="del-btn" data-del-tx="' + tx.id + '" title="Удалить">' + SVG.trash + '</button>' +
+                        '</div>' +
+                      '</div>'
+                    );
+                  }).join('') +
+                '</div>') +
+          '</section>' +
+
+          // Сводка расходов по категориям
+          (catRows.length > 0
+            ? '<section class="card stack">' +
+                '<div class="row-between">' +
+                  '<h2 class="section-title">Расходы по категориям</h2>' +
+                  '<span style="font-size:14px;font-weight:800;">' + formatRub(totalExp) + '</span>' +
+                '</div>' +
+                catRows.map((r) =>
+                  '<div>' +
+                    '<div class="row-between" style="font-size:12px;margin-bottom:5px;">' +
+                      '<span>' + r.emoji + ' <b>' + esc(r.id) + '</b></span>' +
+                      '<span><b>' + formatRub(r.amount) + '</b> <span class="muted">(' + r.pct + '%)</span></span>' +
+                    '</div>' +
+                    '<div class="progress-track"><div class="progress-fill" style="width:' + r.pct + '%;background:' + r.color + ';"></div></div>' +
+                  '</div>'
+                ).join('') +
+              '</section>'
+            : '')
+        );
+      }
+
+      // ---- ВКЛАДКА 2: ДОЛГИ (УБИЙЦА ДОЛГОВ) ----
+      function renderDebtCardsHTML(ordered, totalDebt) {
+        return ordered.map((d, i) => {
+          const isFirst = i === 0;
+          const pct = totalDebt > 0 ? Math.max(8, Math.round((d.balance / totalDebt) * 100)) : 100;
+          return (
+            '<div class="debt-card ' + (isFirst ? 'priority' : '') + '">' +
+              '<div class="row-between" style="align-items:flex-start;">' +
+                '<div>' +
+                  '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px;">' +
+                    (isFirst
+                      ? '<span class="badge badge-red">🎯 Приоритет №1 — бить сюда</span>'
+                      : '<span class="badge badge-muted">Очередь #' + (i + 1) + '</span>') +
+                    '<span class="badge badge-blue">Платеж ' + d.paymentDay + ' числа</span>' +
+                  '</div>' +
+                  '<div style="font-size:16px;font-weight:800;">' + esc(d.name) + '</div>' +
+                '</div>' +
+                '<button type="button" class="del-btn" data-del-debt="' + d.id + '" title="Удалить">' + SVG.trash + '</button>' +
+              '</div>' +
+              '<div class="grid-3">' +
+                '<div><div class="stat-label">Остаток</div><div class="stat-val">' + formatRub(d.balance) + '</div></div>' +
+                '<div><div class="stat-label">Ставка</div><div class="stat-val" style="color:' + (d.rate >= 24 ? 'var(--red)' : 'var(--text)') + ';">' + d.rate + '%</div></div>' +
+                '<div><div class="stat-label">Закроется</div><div class="stat-val" style="color:var(--emerald);">' + d.payoffShort + '</div></div>' +
+              '</div>' +
+              '<div class="progress-track"><div class="progress-fill" style="width:' + pct + '%;background:' + (isFirst ? 'var(--red)' : 'var(--blue)') + ';"></div></div>' +
+              '<div class="muted">Мин. платеж: <b style="color:var(--text);">' + formatRub(d.minPayment) + '/мес</b></div>' +
+            '</div>'
+          );
+        }).join('');
+      }
+
+      function htmlDebtsTab() {
+        const totalDebt = state.debts.reduce((s, d) => s + (Number(d.balance) || 0), 0);
+        const totalMin = state.debts.reduce((s, d) => s + (Number(d.minPayment) || 0), 0);
+        const base = simulateDebts(state.debts, state.debtStrategy, 0);
+        const active = simulateDebts(state.debts, state.debtStrategy, state.extraMonthlyPayment);
+        const mSaved = Math.max(0, base.months - active.months);
+        const iSaved = Math.max(0, base.totalInterest - active.totalInterest);
+
+        return (
+          '<section class="card anim-in" style="background:linear-gradient(145deg,#1f1422 0%,#161b22 65%);border-color:rgba(239,68,68,0.35);">' +
+            '<div class="row-between" style="margin-bottom:8px;">' +
+              '<span style="font-size:12px;font-weight:800;text-transform:uppercase;color:#fca5a5;">🔥 Убийца долгов</span>' +
+              '<button id="btn-add-debt" class="btn btn-primary btn-sm">' + SVG.plus + ' Долг</button>' +
+            '</div>' +
+            '<div class="row-between" style="align-items:flex-end;">' +
+              '<div><div class="muted">Общий долг</div><div style="font-size:30px;font-weight:900;letter-spacing:-0.02em;">' + formatRub(totalDebt) + '</div></div>' +
+              '<div style="text-align:right;"><div class="muted">Дата свободы</div><div id="d-payoff" style="font-size:16px;font-weight:800;color:var(--emerald);">' + active.payoffLabel + '</div></div>' +
+            '</div>' +
+            (state.debts.length > 0
+              ? '<div class="grid-2" style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);">' +
+                  '<div class="card-soft"><div class="stat-label">Закроешь раньше</div><div id="d-msaved" style="font-size:15px;font-weight:800;color:var(--emerald);margin-top:2px;">' + (mSaved > 0 ? 'на ' + mSaved + ' мес.' : 'Базовый план') + '</div></div>' +
+                  '<div class="card-soft"><div class="stat-label">Экономия на %</div><div id="d-isaved" style="font-size:15px;font-weight:800;color:var(--amber);margin-top:2px;">' + formatRub(iSaved) + '</div></div>' +
+                '</div>'
+              : '') +
+            (active.warning
+              ? '<div style="margin-top:10px;padding:10px;border-radius:12px;background:var(--red-soft);color:#fecaca;font-size:12px;">⚠️ ' + active.warning + '</div>'
+              : '') +
+          '</section>' +
+
+          (state.debts.length > 0
+            ? '<section class="card stack">' +
+                '<div>' +
+                  '<div class="label">Стратегия погашения</div>' +
+                  '<div class="segmented">' +
+                    '<button type="button" data-strat="avalanche" class="seg-btn ' + (state.debtStrategy === 'avalanche' ? 'active' : '') + '">🌋 Лавина (выс. %)</button>' +
+                    '<button type="button" data-strat="snowball" class="seg-btn ' + (state.debtStrategy === 'snowball' ? 'active' : '') + '">⛄ Снежный ком</button>' +
+                  '</div>' +
+                  '<div class="muted" style="margin-top:6px;">' +
+                    (state.debtStrategy === 'avalanche'
+                      ? 'Сначала гасим самый высокий процент — максимальная экономия рублей.'
+                      : 'Сначала закрываем самый маленький долг — быстрый моральный импульс.') +
+                  '</div>' +
+                '</div>' +
+                '<div>' +
+                  '<div class="row-between">' +
+                    '<span style="font-size:13px;font-weight:700;">Досрочно сверх платежа:</span>' +
+                    '<span id="d-extra-lbl" style="font-size:15px;font-weight:900;color:var(--emerald);">+' + formatRub(state.extraMonthlyPayment) + '/мес</span>' +
+                  '</div>' +
+                  '<input id="debt-slider" class="fx-range" type="range" min="0" max="30000" step="500" value="' + state.extraMonthlyPayment + '" />' +
+                  '<div class="row-between muted" style="font-size:11px;"><span>0 ₽</span><span>+15 000 ₽</span><span>+30 000 ₽</span></div>' +
+                  '<div class="card-soft muted" style="margin-top:8px;">Мин. платежи: <b style="color:var(--text);">' + formatRub(totalMin) + '</b> • Итого в месяц: <b id="d-total-m" style="color:var(--text);">' + formatRub(totalMin + state.extraMonthlyPayment) + '</b></div>' +
+                '</div>' +
+              '</section>'
+            : '') +
+
+          '<section class="stack-sm">' +
+            '<div class="row-between" style="padding:0 4px;">' +
+              '<h2 class="section-title">Список долгов</h2>' +
+              '<span class="muted">' + state.debts.length + ' актив.</span>' +
+            '</div>' +
+            '<div id="debt-list" class="stack">' +
+              (state.debts.length === 0
+                ? '<div class="empty-box"><div style="font-size:28px;margin-bottom:6px;">🎉</div><div style="font-weight:800;">Долгов нет!</div><p class="muted" style="margin:6px 0 14px;">Добавьте кредиты, кредитки, рассрочки или ипотеку — симулятор рассчитает дату свободы.</p><button id="btn-add-debt-empty" class="btn btn-primary btn-sm">+ Добавить долг</button></div>'
+                : renderDebtCardsHTML(active.ordered, totalDebt)) +
+            '</div>' +
+          '</section>'
+        );
+      }
+
+      // ---- ВКЛАДКА 3: СТОП-КРАН И КОПИЛКИ ----
+      function htmlStopPreview(m) {
+        const price = Math.max(0, Number(stopDraft.price) || 0);
+        if (!price) return '';
+        const hours = +(price / m.hourlyRate).toFixed(1);
+        const shifts = +(hours / 8).toFixed(1);
+        const baseLimit = Math.max(300, Math.abs(m.dailyPlan) || 1000);
+        const limits = +(price / baseLimit).toFixed(1);
+        const toneObj = TONES.find((t) => t.id === state.tone) || TONES[0];
+
+        return (
+          '<div class="card-soft stack anim-in" style="margin-top:4px;">' +
+            '<div class="grid-3" style="text-align:center;">' +
+              '<div style="background:var(--bg);padding:10px 6px;border-radius:12px;"><div class="stat-label">Твой труд</div><div style="font-size:16px;font-weight:900;color:var(--amber);margin-top:2px;">' + hours + ' ч.</div></div>' +
+              '<div style="background:var(--bg);padding:10px 6px;border-radius:12px;"><div class="stat-label">Смен (8ч)</div><div style="font-size:16px;font-weight:900;margin-top:2px;">' + shifts + '</div></div>' +
+              '<div style="background:var(--bg);padding:10px 6px;border-radius:12px;"><div class="stat-label">Дн. лимитов</div><div style="font-size:16px;font-weight:900;color:var(--red);margin-top:2px;">' + limits + '</div></div>' +
+            '</div>' +
+            '<div style="font-size:12px;line-height:1.45;color:#e6edf3;">' + toneObj.emoji + ' ' + esc(getMentorText(state.tone, 'stop', { hours, limits })) + '</div>' +
+            '<button id="btn-freeze-24h" type="button" class="btn btn-blue btn-block btn-sm">❄️ Отложить на 24 часа</button>' +
+          '</div>'
+        );
+      }
+
+      function htmlStopTab(m) {
+        const now = Date.now();
+        return (
+          '<section class="card stack anim-in">' +
+            '<div class="row-between">' +
+              '<div><h2 class="section-title">❄️ Стоп-кран WB / Ozon</h2><div class="muted" style="margin-top:2px;">Сколько часов жизни стоит хотелка</div></div>' +
+              '<div style="text-align:right;"><div class="muted" style="color:var(--emerald);">Спасено</div><div style="font-size:15px;font-weight:900;color:var(--emerald);">' + formatRub(state.savedFromImpulse) + '</div></div>' +
+            '</div>' +
+            '<div style="display:grid;grid-template-columns:3fr 2fr;gap:8px;">' +
+              '<input id="stop-name" class="input" type="text" value="' + esc(stopDraft.name) + '" placeholder="Название товара" />' +
+              '<input id="stop-price" class="input" type="number" inputmode="numeric" value="' + esc(stopDraft.price) + '" placeholder="Цена ₽" />' +
+            '</div>' +
+            '<div id="stop-preview">' + htmlStopPreview(m) + '</div>' +
+          '</section>' +
+
+          (state.wishlist.length > 0
+            ? '<section class="stack-sm">' +
+                '<div class="row-between" style="padding:0 4px;"><h3 class="section-title">На охлаждении (24 ч.)</h3><span class="muted">' + state.wishlist.length + ' шт.</span></div>' +
+                state.wishlist.map((w) => {
+                  const left = Math.max(0, 24 * 3600000 - (now - w.createdAt));
+                  const hrs = Math.floor(left / 3600000);
+                  const mins = Math.floor((left % 3600000) / 60000);
+                  return (
+                    '<div class="card stack-sm">' +
+                      '<div class="row-between">' +
+                        '<div><div style="font-weight:700;font-size:14px;">' + esc(w.name) + '</div><div class="muted" style="margin-top:2px;">⏱ ' + (left > 0 ? 'Осталось: ' + hrs + ' ч. ' + mins + ' мин.' : '24 часа прошли — решайте спокойно') + '</div></div>' +
+                        '<div style="font-weight:900;font-size:15px;">' + formatRub(w.price) + '</div>' +
+                      '</div>' +
+                      '<div class="grid-2" style="margin-top:6px;">' +
+                        '<button type="button" data-wish-save="' + w.id + '" class="btn btn-sm" style="background:var(--emerald-soft);color:var(--emerald);border:1px solid rgba(16,185,129,0.35);">Передумал (+экономия)</button>' +
+                        '<button type="button" data-wish-buy="' + w.id + '" class="btn btn-soft btn-sm">Всё же купил</button>' +
+                      '</div>' +
+                    '</div>'
+                  );
+                }).join('') +
+              '</section>'
+            : '') +
+
+          '<section class="stack-sm">' +
+            '<div class="row-between" style="padding:0 4px;">' +
+              '<h2 class="section-title">🎯 Копилки и цели</h2>' +
+              '<button id="btn-add-goal" class="btn btn-sm" style="background:var(--emerald-soft);color:var(--emerald);">+ Цель</button>' +
+            '</div>' +
+            (state.goals.length === 0
+              ? '<div class="empty-box"><div class="muted">Добавьте первую копилку — например, «Подушка безопасности».</div></div>'
+              : state.goals.map((g) => {
+                  const pct = Math.min(100, Math.round((g.current / Math.max(1, g.target)) * 100));
+                  return (
+                    '<div class="card stack">' +
+                      '<div class="row-between">' +
+                        '<div style="display:flex;align-items:center;gap:10px;">' +
+                          '<span style="font-size:24px;">' + (g.emoji || '🎯') + '</span>' +
+                          '<div><div style="font-weight:700;font-size:14px;">' + esc(g.name) + '</div><div class="muted">' + formatRub(g.current) + ' из ' + formatRub(g.target) + '</div></div>' +
+                        '</div>' +
+                        '<span style="font-weight:900;color:var(--emerald);">' + pct + '%</span>' +
+                      '</div>' +
+                      '<div class="progress-track"><div class="progress-fill" style="width:' + pct + '%;background:linear-gradient(90deg,var(--blue),var(--emerald));"></div></div>' +
+                      '<div style="display:flex;gap:6px;align-items:center;">' +
+                        [500, 1000, 5000].map((a) =>
+                          '<button type="button" data-topup="' + g.id + '" data-amt="' + a + '" class="btn btn-soft btn-sm" style="flex:1;">+' + a + ' ₽</button>'
+                        ).join('') +
+                        '<button type="button" class="del-btn" data-del-goal="' + g.id + '" title="Удалить">' + SVG.trash + '</button>' +
+                      '</div>' +
+                    '</div>'
+                  );
+                }).join('')) +
+          '</section>'
+        );
+      }
+
+      // ---- ВКЛАДКА 4: ПРОФИЛЬ ----
+      function htmlProfileTab() {
+        return (
+          // Редактирование базовых параметров бюджета
+          '<section class="card stack anim-in">' +
+            '<div class="row-between">' +
+              '<h2 class="section-title">Параметры бюджета</h2>' +
+              '<span class="badge badge-emerald">' + esc(state.userName) + '</span>' +
+            '</div>' +
+            '<form id="prof-budget-form" class="stack">' +
+              '<div class="grid-2">' +
+                '<div><label class="label">Остаток сейчас (₽)</label><input id="pf-bal" class="input" type="number" inputmode="numeric" value="' + Math.round(state.balance) + '" /></div>' +
+                '<div><label class="label">Обязательно до ЗП (₽)</label><input id="pf-mand" class="input" type="number" inputmode="numeric" value="' + Math.round(state.mandatoryPayments) + '" /></div>' +
+              '</div>' +
+              '<div class="grid-2">' +
+                '<div><label class="label">Дней до дохода</label><input id="pf-days" class="input" type="number" inputmode="numeric" min="1" value="' + Math.round(state.daysUntilIncome) + '" /></div>' +
+                '<div><label class="label">Доход в месяц (₽)</label><input id="pf-inc" class="input" type="number" inputmode="numeric" value="' + Math.round(state.monthlyIncome) + '" /></div>' +
+              '</div>' +
+              '<button type="submit" class="btn btn-primary btn-block btn-sm">Сохранить параметры</button>' +
+            '</form>' +
+          '</section>' +
+
+          // Режим и тон ИИ-наставника
+          '<section class="card stack">' +
+            '<div>' +
+              '<div class="label">Характер ИИ-наставника</div>' +
+              '<div class="grid-3">' +
+                TONES.map((t) =>
+                  '<button type="button" data-ptone="' + t.id + '" class="btn btn-sm ' + (state.tone === t.id ? 'btn-primary' : 'btn-soft') + '" style="flex-direction:column;gap:3px;padding:10px 6px;">' +
+                    '<span style="font-size:18px;">' + t.emoji + '</span>' +
+                    '<span style="font-size:11px;">' + t.title.split(' ')[0] + '</span>' +
+                  '</button>'
+                ).join('') +
+              '</div>' +
+            '</div>' +
+            '<div>' +
+              '<div class="label">Режим приложения</div>' +
+              '<div class="grid-2">' +
+                GOALS_MODES.map((m) =>
+                  '<button type="button" data-pmode="' + m.id + '" class="btn btn-sm ' + (state.mode === m.id ? 'btn-blue' : 'btn-soft') + '" style="justify-content:flex-start;font-size:11px;">' +
+                    '<span>' + m.emoji + '</span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + m.title + '</span>' +
+                  '</button>'
+                ).join('') +
+              '</div>' +
+            '</div>' +
+          '</section>' +
+
+          // Генератор карточки Stories на Canvas
+          '<section class="card stack">' +
+            '<div>' +
+              '<h2 class="section-title">📸 Карточка прогресса для Stories</h2>' +
+              '<div class="muted" style="margin-top:2px;">Приватная — без показа зарплаты и суммы долгов</div>' +
+            '</div>' +
+            '<div class="story-canvas-wrap"><canvas id="stories-canvas"></canvas></div>' +
+            '<button id="btn-dl-story" type="button" class="btn btn-primary btn-block">' + SVG.download + ' Скачать PNG</button>' +
+          '</section>' +
+
+          // Инструкция PWA для iPhone Safari
+          '<section class="card stack-sm">' +
+            '<h2 class="section-title">📱 Установка на iPhone (без App Store)</h2>' +
+            '<div class="card-soft" style="font-size:12px;line-height:1.5;">' +
+              '<b>1.</b> Откройте ссылку приложения в <b>Safari</b>.<br/>' +
+              '<b>2.</b> Нажмите <b>«Поделиться»</b> (квадрат со стрелкой вверх внизу).<br/>' +
+              '<b>3.</b> Выберите <b>«На экран «Домой»»</b> → <b>«Добавить»</b>. Иконка FinExit появится как обычное приложение.' +
+            '</div>' +
+          '</section>' +
+
+          // Демо и сброс
+          '<section class="grid-2">' +
+            '<button id="btn-prof-demo" type="button" class="btn btn-soft btn-sm">✨ Демо-данные</button>' +
+            '<button id="btn-prof-reset" type="button" class="btn btn-danger-soft btn-sm">🗑 Сбросить всё</button>' +
+          '</section>'
+        );
+      }
+
+      // =========================================================================
+      // 11. ГЛАВНАЯ ФУНКЦИЯ РЕНДЕРА И НАВЕШИВАНИЕ ОБРАБОТЧИКОВ
+      // =========================================================================
+      function render() {
+        if (!state.onboarded) {
+          renderOnboarding();
+          return;
+        }
+
+        const m = calcBudgetMetrics(state);
+        const badge = Storage.getBadge();
+        const root = document.getElementById('app-root');
+
+        let contentHTML = '';
+        if (activeTab === 'home') contentHTML = htmlHomeTab(m);
+        else if (activeTab === 'debts') contentHTML = htmlDebtsTab();
+        else if (activeTab === 'stop') contentHTML = htmlStopTab(m);
+        else contentHTML = htmlProfileTab();
+
+        root.innerHTML =
+          '<header class="app-header">' +
+            '<div class="brand-row">' +
+              '<div class="brand-logo">₽</div>' +
+              '<div>' +
+                '<div class="brand-title">FinExit</div>' +
+                '<div class="sync-badge ' + (badge.cloud ? 'cloud' : '') + '" data-storage-badge>' + badge.text + '</div>' +
+              '</div>' +
+            '</div>' +
+            '<button id="hdr-demo" class="btn btn-sm btn-soft" style="font-size:11px;padding:7px 10px;">✨ Демо</button>' +
+          '</header>' +
+
+          '<main class="main-content">' + contentHTML + '</main>' +
+
+          '<nav class="bottom-nav">' +
+            [
+              { id: 'home', label: 'Главная', icon: SVG.wallet },
+              { id: 'debts', label: 'Долги', icon: SVG.flame },
+              { id: 'stop', label: 'Стоп-кран', icon: SVG.stop },
+              { id: 'profile', label: 'Профиль', icon: SVG.user },
+            ].map((t) =>
+              '<button type="button" data-tab="' + t.id + '" class="nav-btn ' + (activeTab === t.id ? 'active' : '') + '">' +
+                t.icon + '<span>' + t.label + '</span>' +
+              '</button>'
+            ).join('') +
+          '</nav>';
+
+        // Шапка и таббар
+        document.getElementById('hdr-demo').onclick = () => {
+          Storage.haptic('medium');
+          state = createDemoState(Storage.userName || state.userName || 'Алексей');
+          activeTab = 'home';
+          persist(true);
+          showToast('Загружены демо-данные РФ', 'success');
+          render();
+        };
+
+        document.querySelectorAll('[data-tab]').forEach((b) => {
+          b.onclick = () => {
+            Storage.haptic('light');
+            activeTab = b.dataset.tab;
+            render();
+            window.scrollTo(0, 0);
+          };
+        });
+
+        // --- Обработчики вкладки ГЛАВНАЯ ---
+        if (activeTab === 'home') {
+          document.getElementById('quick-form').onsubmit = (e) => {
+            e.preventDefault();
+            const inp = document.getElementById('quick-input');
+            const items = parseQuickInput(inp.value);
+            if (!items.length) {
+              return showToast('Укажите сумму, например: «Пятерочка 1450 и кофе 250»', 'warn');
+            }
+            let delta = 0;
+            items.forEach((it) => { delta += it.type === 'income' ? it.amount : -it.amount; });
+            state.balance += delta;
+            state.transactions = items.concat(state.transactions);
+            inp.value = '';
+            persist();
+            Storage.haptic('medium');
+            const sum = items.reduce((s, it) => s + it.amount, 0);
+            const isIncOnly = items.length === 1 && items[0].type === 'income';
+            const msg = getMentorText(state.tone, isIncOnly ? 'income' : 'expense', { amount: sum });
+            showToast(items.length > 1 ? 'Разобрал ' + items.length + ' операции! ' + msg : msg, 'success');
+            render();
+          };
+
+          document.getElementById('voice-btn').onclick = toggleVoice;
+          document.getElementById('btn-add-tx').onclick = openManualTxModal;
+          document.getElementById('btn-lazy-sync').onclick = openLazySyncModal;
+
+          document.querySelectorAll('[data-chip]').forEach((c) => {
+            c.onclick = () => {
+              Storage.haptic('light');
+              const inp = document.getElementById('quick-input');
+              if (inp) { inp.value = c.dataset.chip; inp.focus(); }
+            };
+          });
+
+          document.querySelectorAll('[data-del-tx]').forEach((b) => {
+            b.onclick = () => {
+              Storage.haptic('light');
+              const id = b.dataset.delTx;
+              const tx = state.transactions.find((t) => t.id === id);
+              if (!tx) return;
+              state.balance += tx.type === 'income' ? -tx.amount : tx.amount;
+              state.transactions = state.transactions.filter((t) => t.id !== id);
+              persist();
+              showToast('Операция удалена, баланс пересчитан', 'info');
+              render();
+            };
+          });
+        }
+
+        // --- Обработчики вкладки ДОЛГИ ---
+        if (activeTab === 'debts') {
+          const addBtn = document.getElementById('btn-add-debt');
+          if (addBtn) addBtn.onclick = openAddDebtModal;
+          const addEmpty = document.getElementById('btn-add-debt-empty');
+          if (addEmpty) addEmpty.onclick = openAddDebtModal;
+
+          document.querySelectorAll('[data-strat]').forEach((b) => {
+            b.onclick = () => {
+              Storage.haptic('light');
+              state.debtStrategy = b.dataset.strat;
+              persist();
+              render();
+            };
+          });
+
+          const bindDebtDeletes = () => {
+            document.querySelectorAll('[data-del-debt]').forEach((b) => {
+              b.onclick = () => {
+                Storage.haptic('light');
+                state.debts = state.debts.filter((d) => d.id !== b.dataset.delDebt);
+                persist();
+                showToast('Долг удален из списка', 'info');
+                render();
+              };
+            });
+          };
+          bindDebtDeletes();
+
+          const slider = document.getElementById('debt-slider');
+          if (slider) {
+            slider.addEventListener('input', () => {
+              state.extraMonthlyPayment = Number(slider.value) || 0;
+              const totalDebt = state.debts.reduce((s, d) => s + (Number(d.balance) || 0), 0);
+              const totalMin = state.debts.reduce((s, d) => s + (Number(d.minPayment) || 0), 0);
+              const base = simulateDebts(state.debts, state.debtStrategy, 0);
+              const active = simulateDebts(state.debts, state.debtStrategy, state.extraMonthlyPayment);
+              const mSaved = Math.max(0, base.months - active.months);
+              const iSaved = Math.max(0, base.totalInterest - active.totalInterest);
+
+              const elExtra = document.getElementById('d-extra-lbl');
+              const elTot = document.getElementById('d-total-m');
+              const elPay = document.getElementById('d-payoff');
+              const elM = document.getElementById('d-msaved');
+              const elI = document.getElementById('d-isaved');
+              const elList = document.getElementById('debt-list');
+
+              if (elExtra) elExtra.textContent = '+' + formatRub(state.extraMonthlyPayment) + '/мес';
+              if (elTot) elTot.textContent = formatRub(totalMin + state.extraMonthlyPayment);
+              if (elPay) elPay.textContent = active.payoffLabel;
+              if (elM) elM.textContent = mSaved > 0 ? 'на ' + mSaved + ' мес.' : 'Базовый план';
+              if (elI) elI.textContent = formatRub(iSaved);
+              if (elList) {
+                elList.innerHTML = renderDebtCardsHTML(active.ordered, totalDebt);
+                bindDebtDeletes();
+              }
+            });
+            slider.addEventListener('change', () => {
+              Storage.haptic('light');
+              persist();
+            });
+          }
+        }
+
+        // --- Обработчики вкладки СТОП-КРАН ---
+        if (activeTab === 'stop') {
+          const bindFreeze = () => {
+            const fb = document.getElementById('btn-freeze-24h');
+            if (fb) {
+              fb.onclick = () => {
+                const price = Math.round(Number(stopDraft.price));
+                if (!price || price <= 0) return;
+                state.wishlist.unshift({
+                  id: 'w-' + Date.now(),
+                  name: stopDraft.name.trim() || 'Покупка на маркетплейсе',
+                  price,
+                  createdAt: Date.now(),
+                });
+                stopDraft = { name: '', price: '' };
+                persist();
+                Storage.haptic('medium');
+                showToast('Отложено на 24 часа! Выдержка прокачана.', 'success');
+                render();
+              };
+            }
+          };
+          bindFreeze();
+
+          const sn = document.getElementById('stop-name');
+          const sp = document.getElementById('stop-price');
+          if (sn) sn.addEventListener('input', () => { stopDraft.name = sn.value; });
+          if (sp) {
+            sp.addEventListener('input', () => {
+              stopDraft.price = sp.value;
+              const prev = document.getElementById('stop-preview');
+              if (prev) {
+                prev.innerHTML = htmlStopPreview(calcBudgetMetrics(state));
+                bindFreeze();
+              }
+            });
+          }
+
+          document.querySelectorAll('[data-wish-save]').forEach((b) => {
+            b.onclick = () => {
+              const w = state.wishlist.find((x) => x.id === b.dataset.wishSave);
+              if (!w) return;
+              state.savedFromImpulse += w.price;
+              state.wishlist = state.wishlist.filter((x) => x.id !== w.id);
+              persist();
+              Storage.haptic('heavy');
+              showToast('Победа! Вы сэкономили ' + formatRub(w.price) + '!', 'success');
+              render();
+            };
+          });
+
+          document.querySelectorAll('[data-wish-buy]').forEach((b) => {
+            b.onclick = () => {
+              const w = state.wishlist.find((x) => x.id === b.dataset.wishBuy);
+              if (!w) return;
+              state.balance -= w.price;
+              state.transactions.unshift({
+                id: 'tx-w-' + Date.now(),
+                title: w.name,
+                amount: w.price,
+                type: 'expense',
+                category: 'Маркетплейсы',
+                date: getTodayISO(),
+              });
+              state.wishlist = state.wishlist.filter((x) => x.id !== w.id);
+              persist();
+              showToast('Покупка «' + w.name + '» учтена в расходах', 'info');
+              render();
+            };
+          });
+
+          document.getElementById('btn-add-goal').onclick = openAddGoalModal;
+
+          document.querySelectorAll('[data-topup]').forEach((b) => {
+            b.onclick = () => {
+              const id = b.dataset.topup;
+              const amt = Number(b.dataset.amt) || 500;
+              state.balance -= amt;
+              state.goals = state.goals.map((g) => (g.id === id ? Object.assign({}, g, { current: g.current + amt }) : g));
+              state.transactions.unshift({
+                id: 'tx-g-' + Date.now(),
+                title: 'Пополнение копилки',
+                amount: amt,
+                type: 'expense',
+                category: 'Прочее',
+                date: getTodayISO(),
+              });
+              persist();
+              Storage.haptic('medium');
+              showToast('+' + formatRub(amt) + ' отправлено в копилку!', 'success');
+              render();
+            };
+          });
+
+          document.querySelectorAll('[data-del-goal]').forEach((b) => {
+            b.onclick = () => {
+              state.goals = state.goals.filter((g) => g.id !== b.dataset.delGoal);
+              persist();
+              showToast('Копилка удалена', 'info');
+              render();
+            };
+          });
+        }
+
+        // --- Обработчики вкладки ПРОФИЛЬ ---
+        if (activeTab === 'profile') {
+          drawStoriesCard();
+
+          document.getElementById('prof-budget-form').onsubmit = (e) => {
+            e.preventDefault();
+            state.balance = Math.max(0, Math.round(Number(document.getElementById('pf-bal').value) || 0));
+            state.mandatoryPayments = Math.max(0, Math.round(Number(document.getElementById('pf-mand').value) || 0));
+            state.daysUntilIncome = Math.max(1, Math.round(Number(document.getElementById('pf-days').value) || 1));
+            state.monthlyIncome = Math.max(5000, Math.round(Number(document.getElementById('pf-inc').value) || 60000));
+            persist(true);
+            Storage.haptic('medium');
+            showToast('Параметры бюджета сохранены', 'success');
+            render();
+          };
+
+          document.querySelectorAll('[data-ptone]').forEach((b) => {
+            b.onclick = () => {
+              Storage.haptic('light');
+              state.tone = b.dataset.ptone;
+              persist();
+              showToast('Характер наставника обновлен', 'info');
+              render();
+            };
+          });
+
+          document.querySelectorAll('[data-pmode]').forEach((b) => {
+            b.onclick = () => {
+              Storage.haptic('light');
+              state.mode = b.dataset.pmode;
+              persist();
+              showToast('Режим работы изменен', 'info');
+              render();
+            };
+          });
+
+          document.getElementById('btn-dl-story').onclick = () => {
+            Storage.haptic('medium');
+            const canvas = document.getElementById('stories-canvas');
+            if (!canvas) return;
+            try {
+              const link = document.createElement('a');
+              link.download = 'finexit-story-' + getTodayISO() + '.png';
+              link.href = canvas.toDataURL('image/png');
+              document.body.appendChild(link);
+              link.click();
+              link.remove();
+              showToast('PNG-карточка для Stories сохранена!', 'success');
+            } catch (_) {
+              showToast('Зажмите картинку пальцем, чтобы сохранить её в галерею', 'info');
+            }
+          };
+
+          document.getElementById('btn-prof-demo').onclick = () => {
+            Storage.haptic('medium');
+            state = createDemoState(Storage.userName || state.userName || 'Алексей');
+            activeTab = 'home';
+            persist(true);
+            showToast('Загружены демо-данные РФ', 'success');
+            render();
+          };
+
+          document.getElementById('btn-prof-reset').onclick = openConfirmResetModal;
+        }
+      }
+
+      // =========================================================================
+      // 12. ИНИЦИАЛИЗАЦИЯ ПРИ ЗАГРУЗКЕ
+      // =========================================================================
+      async function boot() {
+        Storage.init();
+        const local = Storage.loadLocal();
+        const defName = Storage.userName || 'Друг';
+
+        if (local) {
+          state = Object.assign(createEmptyState(defName), local);
+          if (Storage.userName && (!state.userName || state.userName === 'Друг')) {
+            state.userName = Storage.userName;
+          }
+        } else {
+          state = createEmptyState(defName);
+        }
+
+        render();
+
+        // Асинхронная синхронизация с Telegram CloudStorage (если открыто в Telegram)
+        if (Storage.hasCloud) {
+          const cloud = await Storage.loadCloud();
+          if (cloud && (!local || (cloud.updatedAt || 0) >= (local.updatedAt || 0))) {
+            state = Object.assign(createEmptyState(defName), cloud);
+            if (Storage.userName && (!state.userName || state.userName === 'Друг')) {
+              state.userName = Storage.userName;
+            }
+            Storage.saveLocal(state);
+            render();
+          } else if (local && !cloud && local.onboarded) {
+            Storage.saveCloud(state);
+          }
+          updateStorageBadges();
+        }
+
+        // Обновление таймеров на вкладке Стоп-кран раз в минуту
+        setInterval(() => {
+          if (activeTab === 'stop' && state.onboarded && state.wishlist.length > 0) {
+            render();
+          }
+        }, 60000);
+      }
+
+      window.addEventListener('DOMContentLoaded', boot);
+    })();
+  </script>
+</body>
+</html>
