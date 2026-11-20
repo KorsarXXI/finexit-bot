@@ -1,471 +1,891 @@
 <!DOCTYPE html>
-<html lang="ru" class="dark">
+<html lang="ru">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <title>Свободно — Личный финансовый навигатор</title>
+  <title>FinExit — Личный финансовый навигатор</title>
 
-  <!-- iOS PWA Meta Tags -->
+  <!-- iOS PWA мета-теги для добавления на экран «Домой» -->
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="apple-mobile-web-app-title" content="Свободно" />
-  <meta name="theme-color" content="#0F1115" />
+  <meta name="apple-mobile-web-app-title" content="FinExit" />
+  <meta name="theme-color" content="#0d1117" />
 
-  <!-- Telegram WebApp SDK -->
+  <!-- Единственный внешний скрипт: Telegram Mini App SDK -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
 
-  <!-- Inter Font -->
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
-
-  <!-- Tailwind CSS -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      darkMode: 'class',
-      theme: {
-        extend: {
-          fontFamily: {
-            sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
-          },
-          colors: {
-            brand: '#FFDD2D',
-            brandDark: '#F5C900',
-            surface: {
-              dark: '#0F1115',
-              card: '#181B22',
-              soft: '#222631',
-            },
-          },
-        },
-      },
-    };
-  </script>
-
   <style>
-    /* Safe area padding for iOS notch / Dynamic Island & Telegram WebView */
+    /* =========================================================================
+       ДИЗАЙН-ТОКЕНЫ И БАЗОВЫЕ СТИЛИ (ЧИСТЫЙ CSS, БЕЗ ВНЕШНИХ ЗАВИСИМОСТЕЙ)
+       ========================================================================= */
     :root {
+      --bg: #0d1117;
+      --bg-outer: #070a0f;
+      --card: #161b22;
+      --card-soft: #1f2630;
+      --card-hover: #262f3b;
+      --border: rgba(240, 246, 252, 0.08);
+      --border-strong: rgba(240, 246, 252, 0.16);
+      --text: #f0f6fc;
+      --text-muted: #8b949e;
+      --emerald: #10b981;
+      --emerald-soft: rgba(16, 185, 129, 0.14);
+      --blue: #3b82f6;
+      --blue-soft: rgba(59, 130, 246, 0.15);
+      --amber: #f59e0b;
+      --amber-soft: rgba(245, 158, 11, 0.15);
+      --red: #ef4444;
+      --red-soft: rgba(239, 68, 68, 0.16);
+      --purple: #a855f7;
+      --radius-xl: 22px;
+      --radius-lg: 16px;
+      --radius-md: 12px;
+      --radius-sm: 10px;
       --sat: env(safe-area-inset-top, 0px);
       --sab: env(safe-area-inset-bottom, 0px);
     }
-    html, body {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+
+    * {
+      box-sizing: border-box;
       -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      min-height: 100%;
+      background: var(--bg-outer);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font-size: 15px;
+      line-height: 1.45;
+      -webkit-font-smoothing: antialiased;
       overscroll-behavior-y: none;
     }
-    .pt-safe {
-      padding-top: max(12px, var(--sat));
+
+    button, input, select, textarea {
+      font-family: inherit;
+      color: inherit;
     }
-    .pb-safe {
-      padding-bottom: max(14px, var(--sab));
+
+    button {
+      cursor: pointer;
+      border: none;
+      background: none;
+      padding: 0;
     }
-    .no-scrollbar::-webkit-scrollbar {
-      display: none;
+
+    /* Контейнер мобильного приложения */
+    .app-shell {
+      width: 100%;
+      max-width: 460px;
+      min-height: 100vh;
+      margin: 0 auto;
+      background: var(--bg);
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 0 40px rgba(0, 0, 0, 0.65);
+      overflow-x: hidden;
     }
-    .no-scrollbar {
-      -ms-overflow-style: none;
-      scrollbar-width: none;
+
+    /* Всплывающие уведомления (Тосты) */
+    .toast-root {
+      position: fixed;
+      top: calc(12px + var(--sat));
+      left: 50%;
+      transform: translateX(-50%);
+      width: calc(100% - 28px);
+      max-width: 420px;
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      pointer-events: none;
     }
-    /* Custom polished range slider */
-    input[type="range"].sv-range {
-      -webkit-appearance: none;
-      appearance: none;
+
+    .toast {
+      pointer-events: auto;
+      padding: 12px 14px;
+      border-radius: 14px;
+      font-size: 13px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: #1f2937;
+      border: 1px solid var(--border-strong);
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.45);
+      animation: slideDown 0.22s ease-out;
+    }
+
+    .toast.success { background: #064e3b; border-color: rgba(16, 185, 129, 0.5); }
+    .toast.warn { background: #7f1d1d; border-color: rgba(239, 68, 68, 0.5); }
+    .toast.info { background: #1e293b; border-color: rgba(59, 130, 246, 0.45); }
+
+    @keyframes slideDown {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .anim-in {
+      animation: fadeUp 0.2s ease-out both;
+    }
+
+    /* Шапка приложения */
+    .app-header {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      padding: calc(12px + var(--sat)) 16px 10px;
+      background: rgba(13, 17, 23, 0.88);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    }
+
+    .brand-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .brand-logo {
+      width: 36px;
+      height: 36px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, var(--emerald), #059669);
+      color: #06281e;
+      font-weight: 900;
+      font-size: 19px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 14px rgba(16, 185, 129, 0.3);
+      flex-shrink: 0;
+    }
+
+    .brand-title {
+      font-size: 16px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      line-height: 1.15;
+    }
+
+    .sync-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .sync-badge.cloud {
+      color: var(--emerald);
+    }
+
+    .icon-btn {
+      width: 38px;
+      height: 38px;
+      border-radius: 12px;
+      background: var(--card-soft);
+      border: 1px solid var(--border);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text);
+      transition: transform 0.12s, background 0.15s;
+    }
+
+    .icon-btn:active {
+      transform: scale(0.94);
+    }
+
+    /* Основной скроллируемый контент */
+    .main-content {
+      flex: 1;
+      padding: 12px 16px calc(92px + var(--sab));
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    /* Карточки */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xl);
+      padding: 16px;
+    }
+
+    .card-soft {
+      background: var(--card-soft);
+      border-radius: var(--radius-md);
+      padding: 12px;
+    }
+
+    /* Герой-карточка «Свободно на сегодня» */
+    .hero-card {
+      border-radius: 24px;
+      padding: 20px;
+      position: relative;
+      overflow: hidden;
+      background: linear-gradient(145deg, #132a24 0%, #161b22 55%, #111827 100%);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+    }
+
+    .hero-card.danger {
+      background: linear-gradient(145deg, #450a0a 0%, #2a0d12 60%, #161b22 100%);
+      border-color: rgba(239, 68, 68, 0.55);
+      box-shadow: 0 12px 30px rgba(239, 68, 68, 0.2);
+    }
+
+    .hero-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+
+    .hero-label {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--emerald);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .hero-card.danger .hero-label {
+      color: #fca5a5;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 5px 10px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--text);
+      white-space: nowrap;
+    }
+
+    .hero-amount {
+      font-size: 38px;
+      font-weight: 900;
+      letter-spacing: -0.03em;
+      line-height: 1.1;
+      margin: 6px 0 10px;
+    }
+
+    .hero-card.danger .hero-amount {
+      color: #fecaca;
+    }
+
+    .mentor-box {
+      background: rgba(0, 0, 0, 0.28);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 14px;
+      padding: 11px 12px;
+      font-size: 13px;
+      line-height: 1.45;
+      color: #e6edf3;
+    }
+
+    .hero-stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-top: 14px;
+      padding-top: 12px;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .stat-label {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .stat-val {
+      font-size: 13px;
+      font-weight: 700;
+      margin-top: 2px;
+    }
+
+    /* Прогресс-бары */
+    .progress-track {
+      width: 100%;
       height: 8px;
       border-radius: 999px;
-      outline: none;
+      background: rgba(255, 255, 255, 0.1);
+      overflow: hidden;
     }
-    input[type="range"].sv-range::-webkit-slider-thumb {
+
+    .progress-fill {
+      height: 100%;
+      border-radius: 999px;
+      transition: width 0.3s ease;
+    }
+
+    /* Поля ввода и кнопки */
+    .input {
+      width: 100%;
+      background: #0d1117;
+      border: 1px solid var(--border-strong);
+      border-radius: 14px;
+      padding: 12px 14px;
+      font-size: 14px;
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    .input:focus {
+      border-color: var(--emerald);
+    }
+
+    .input::placeholder {
+      color: #6e7681;
+    }
+
+    .input-lg {
+      font-size: 18px;
+      font-weight: 800;
+      padding: 13px 14px;
+    }
+
+    .label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      padding: 12px 16px;
+      border-radius: 14px;
+      font-size: 14px;
+      font-weight: 700;
+      transition: transform 0.12s, opacity 0.15s, background 0.15s;
+    }
+
+    .btn:active {
+      transform: scale(0.97);
+    }
+
+    .btn-block {
+      width: 100%;
+    }
+
+    .btn-primary {
+      background: var(--emerald);
+      color: #042419;
+    }
+
+    .btn-blue {
+      background: var(--blue);
+      color: #ffffff;
+    }
+
+    .btn-amber {
+      background: var(--amber);
+      color: #1f1300;
+    }
+
+    .btn-soft {
+      background: var(--card-soft);
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+
+    .btn-danger-soft {
+      background: var(--red-soft);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #fca5a5;
+    }
+
+    .btn-sm {
+      padding: 9px 12px;
+      font-size: 12px;
+      border-radius: 12px;
+    }
+
+    /* Умный быстрый ввод */
+    .quick-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .quick-input-wrap {
+      position: relative;
+      flex: 1;
+    }
+
+    .quick-input-wrap .input {
+      padding-right: 44px;
+    }
+
+    .voice-btn {
+      position: absolute;
+      right: 6px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-muted);
+      background: transparent;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .voice-btn.listening {
+      background: var(--red);
+      color: #fff;
+      animation: pulse 1s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.55; }
+    }
+
+    .chips-row {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      padding-bottom: 2px;
+      scrollbar-width: none;
+    }
+
+    .chips-row::-webkit-scrollbar {
+      display: none;
+    }
+
+    .chip {
+      font-size: 11px;
+      font-weight: 600;
+      white-space: nowrap;
+      padding: 6px 10px;
+      border-radius: 10px;
+      background: var(--card-soft);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+    }
+
+    .chip:active {
+      border-color: var(--emerald);
+      color: var(--emerald);
+    }
+
+    /* Сетки и утилиты */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+
+    .grid-4 {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+
+    .row-between {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .stack {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .stack-sm {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .section-title {
+      font-size: 15px;
+      font-weight: 800;
+      margin: 0;
+    }
+
+    .muted {
+      color: var(--text-muted);
+      font-size: 12px;
+    }
+
+    /* Списки транзакций и долгов */
+    .tx-list {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xl);
+      overflow: hidden;
+    }
+
+    .tx-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 13px 14px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .tx-item:last-child {
+      border-bottom: none;
+    }
+
+    .tx-left {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      min-width: 0;
+    }
+
+    .tx-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 13px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 19px;
+      background: var(--card-soft);
+      flex-shrink: 0;
+    }
+
+    .tx-title {
+      font-size: 14px;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .tx-meta {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .tx-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .tx-sum {
+      font-size: 14px;
+      font-weight: 800;
+    }
+
+    .tx-sum.inc {
+      color: var(--emerald);
+    }
+
+    .del-btn {
+      width: 30px;
+      height: 30px;
+      border-radius: 9px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: #6e7681;
+      transition: color 0.15s, background 0.15s;
+    }
+
+    .del-btn:hover, .del-btn:active {
+      color: var(--red);
+      background: var(--red-soft);
+    }
+
+    /* Переключатель сегментов */
+    .segmented {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      background: #0d1117;
+      padding: 5px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+    }
+
+    .seg-btn {
+      padding: 9px 10px;
+      border-radius: 10px;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-muted);
+      transition: all 0.15s;
+    }
+
+    .seg-btn.active {
+      background: var(--blue);
+      color: #fff;
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.35);
+    }
+
+    .seg-btn.active.emerald {
+      background: var(--emerald);
+      color: #042419;
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+    }
+
+    .seg-btn.active.red {
+      background: var(--red);
+      color: #fff;
+      box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+    }
+
+    /* Ползунок симулятора долгов */
+    input[type="range"].fx-range {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 8px;
+      border-radius: 999px;
+      background: #262f3b;
+      outline: none;
+      margin: 8px 0;
+    }
+
+    input[type="range"].fx-range::-webkit-slider-thumb {
       -webkit-appearance: none;
       appearance: none;
       width: 24px;
       height: 24px;
       border-radius: 50%;
-      background: #FFDD2D;
-      border: 3px solid #111827;
+      background: var(--emerald);
+      border: 3px solid #0d1117;
+      box-shadow: 0 2px 10px rgba(16, 185, 129, 0.5);
       cursor: pointer;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
     }
-    @keyframes fadeSlideUp {
-      from { opacity: 0; transform: translateY(10px); }
-      to { opacity: 1; transform: translateY(0); }
+
+    /* Карточка долга */
+    .debt-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xl);
+      padding: 15px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
     }
-    .anim-in {
-      animation: fadeSlideUp 0.22s ease-out both;
+
+    .debt-card.priority {
+      border-color: rgba(239, 68, 68, 0.65);
+      box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.25);
     }
-  </style>
-</head>
-<body class="bg-slate-200 dark:bg-[#07080B] text-slate-900 dark:text-[#F5F7FA] min-h-screen antialiased selection:bg-[#FFDD2D] selection:text-slate-950">
 
-  <!-- Main Mobile Shell -->
-  <div id="app-shell" class="w-full max-w-md mx-auto min-h-screen bg-[#F3F4F6] dark:bg-[#0F1115] relative flex flex-col shadow-2xl overflow-x-hidden">
-    <!-- Toast Container -->
-    <div id="toast-root" class="fixed top-4 left-1/2 -translate-x-1/2 z-50 w-[92%] max-w-sm pointer-events-none flex flex-col gap-2"></div>
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      font-size: 10px;
+      font-weight: 800;
+      padding: 4px 8px;
+      border-radius: 999px;
+    }
 
-    <!-- Dynamic Root -->
-    <div id="app-root" class="flex-1 flex flex-col"></div>
+    .badge-red { background: var(--red-soft); color: #fca5a5; }
+    .badge-emerald { background: var(--emerald-soft); color: #6ee7b7; }
+    .badge-blue { background: var(--blue-soft); color: #93c5fd; }
+    .badge-amber { background: var(--amber-soft); color: #fcd34d; }
+    .badge-muted { background: var(--card-soft); color: var(--text-muted); }
 
-    <!-- Modal Root -->
-    <div id="modal-root"></div>
-  </div>
+    /* Онбординг */
+    .ob-wrap {
+      flex: 1;
+      padding: calc(16px + var(--sat)) 18px calc(24px + var(--sab));
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 20px;
+    }
 
-  <script>
-    (function () {
-      'use strict';
+    .ob-steps {
+      display: flex;
+      gap: 8px;
+      margin: 18px 0 22px;
+    }
 
-      // =========================================================================
-      // 1. INLINE SVG ICON SYSTEM (ZERO EXTERNAL ICON DEPENDENCIES)
-      // =========================================================================
-      const ICONS = {
-        wallet: '<path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/>',
-        flame: '<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>',
-        snowflake: '<line x1="2" x2="22" y1="12" y2="12"/><line x1="12" x2="12" y1="2" y2="22"/><path d="m20 16-4-4 4-4"/><path d="m4 8 4 4-4 4"/><path d="m16 4-4 4-4-4"/><path d="m8 20 4-4 4 4"/>',
-        user: '<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
-        mic: '<path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/>',
-        send: '<path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/>',
-        plus: '<path d="M5 12h14"/><path d="M12 5v14"/>',
-        trash: '<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>',
-        edit: '<path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>',
-        refresh: '<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>',
-        sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/>',
-        moon: '<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>',
-        sliders: '<line x1="4" x2="4" y1="21" y2="14"/><line x1="4" x2="4" y1="10" y2="3"/><line x1="12" x2="12" y1="21" y2="12"/><line x1="12" x2="12" y1="8" y2="3"/><line x1="20" x2="20" y1="21" y2="16"/><line x1="20" x2="20" y1="12" y2="3"/><line x1="2" x2="6" y1="14" y2="14"/><line x1="10" x2="14" y1="8" y2="8"/><line x1="18" x2="22" y1="16" y2="16"/>',
-        alert: '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
-        sparkles: '<path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/>',
-        x: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
-        check: '<path d="M20 6 9 17l-5-5"/>',
-        arrowRight: '<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>',
-        download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/>',
-        upload: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/>',
-        phone: '<rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><path d="M12 18h.01"/>',
-        clock: '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
-        target: '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>',
-        calendar: '<rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/>',
-        cloud: '<path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/>',
-        award: '<circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/>',
-        copy: '<rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>',
-      };
+    .ob-step-bar {
+      height: 5px;
+      flex: 1;
+      border-radius: 999px;
+      background: var(--card-soft);
+      transition: background 0.2s;
+    }
 
-      function svgIcon(name, cls = 'w-5 h-5') {
-        return `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONS[name] || ''}</svg>`;
+    .ob-step-bar.active {
+      background: var(--emerald);
+    }
+
+    .choice-card {
+      width: 100%;
+      text-align: left;
+      padding: 14px;
+      border-radius: 18px;
+      background: var(--card);
+      border: 1.5px solid var(--border);
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      transition: border-color 0.15s, background 0.15s;
+    }
+
+    .choice-card.selected {
+      border-color: var(--emerald);
+      background: rgba(16, 185, 129, 0.08);
+    }
+
+    .choice-emoji {
+      font-size: 24px;
+      line-height: 1;
+      margin-top: 2px;
+    }
+
+    /* Нижняя навигация (4 вкладки) */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100%;
+      max-width: 460px;
+      z-index: 30;
+      background: rgba(13, 17, 23, 0.94);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border-top: 1px solid var(--border);
+      padding: 8px 10px calc(10px + var(--sab));
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 4px;
+    }
+
+    .nav-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      padding: 6px 4px;
+      border-radius: 14px;
+      color: var(--text-muted);
+      transition: color 0.15s, background 0.15s;
+    }
+
+    .nav-btn.active {
+      color: var(--emerald);
+      background: var(--emerald-soft);
+    }
+
+    .nav-btn span {
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    /* Модальные окна (без alert / confirm) */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 60;
+      background: rgba(0, 0, 0, 0.72);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      padding: 12px;
+    }
+
+    @media (min-width: 500px) {
+      .modal-backdrop {
+        align-items: center;
       }
+    }
 
-      // =========================================================================
-      // 2. TELEGRAM CLOUD STORAGE ADAPTER (WITH 3500-CHAR CHUNKING & CLEANUP)
-      // =========================================================================
-      const LOCAL_KEY = 'svobodno_tma_state_v2';
-      const CHUNK_SIZE = 3500; // Safely below Telegram's 4096-byte limit when URI-encoded (ASCII = 1 byte/char)
+    .modal-sheet {
+      width: 100%;
+      max-width: 430px;
+      max-height: 88vh;
+      overflow-y: auto;
+      background: #161b22;
+      border: 1px solid var(--border-strong);
+      border-radius: 24px;
+      padding: 18px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.65);
+      animation: fadeUp 0.18s ease-out;
+    }
 
-      const TelegramCloudAdapter = {
-        tg: null,
-        isTelegram: false,
-        hasCloud: false,
-        userName: '',
-        tgTheme: null,
-        syncStatus: 'idle', // idle | syncing | synced | error
-        lastSavedChunks: 0,
-        saveTimer: null,
+    .cat-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      padding: 10px 4px;
+      border-radius: 14px;
+      background: var(--card-soft);
+      border: 1.5px solid transparent;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
 
-        init() {
-          try {
-            const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
-            this.tg = tg;
-            // Distinguish actual Telegram WebView from plain desktop/mobile browsers
-            this.isTelegram = Boolean(tg && (tg.initData || (tg.platform && tg.platform !== 'unknown')));
-            if (this.isTelegram) {
-              tg.ready();
-              tg.expand();
-              if (tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.first_name) {
-                this.userName = tg.initDataUnsafe.user.first_name;
-              }
-              if (tg.colorScheme === 'light' || tg.colorScheme === 'dark') {
-                this.tgTheme = tg.colorScheme;
-              }
-              this.hasCloud = Boolean(
-                tg.CloudStorage &&
-                typeof tg.isVersionAtLeast === 'function' &&
-                tg.isVersionAtLeast('6.9')
-              );
-            }
-          } catch (e) {
-            console.warn('Telegram SDK init fallback:', e);
-          }
-          return {
-            isTelegram: this.isTelegram,
-            hasCloud: this.hasCloud,
-            userName: this.userName,
-            tgTheme: this.tgTheme,
-          };
-        },
+    .cat-btn.active {
+      border-color: var(--emerald);
+      background: var(--emerald-soft);
+      color: var(--text);
+    }
 
-        haptic(style = 'light') {
-          try {
-            if (this.isTelegram && this.tg && this.tg.HapticFeedback) {
-              this.tg.HapticFeedback.impactOccurred(style);
-            }
-          } catch (_) {}
-        },
+    /* Canvas для Stories */
+    .story-canvas-wrap {
+      display: flex;
+      justify-content: center;
+      margin: 10px 0;
+    }
 
-        loadLocal() {
-          try {
-            const raw = localStorage.getItem(LOCAL_KEY);
-            return raw ? JSON.parse(raw) : null;
-          } catch (e) {
-            console.warn('localStorage load error:', e);
-            return null;
-          }
-        },
-
-        saveLocal(data) {
-          try {
-            localStorage.setItem(LOCAL_KEY, JSON.stringify(data));
-          } catch (e) {
-            console.warn('localStorage save error:', e);
-          }
-        },
-
-        // Promisified wrappers around tg.CloudStorage
-        _cloudGetItems(keys) {
-          return new Promise((resolve, reject) => {
-            try {
-              this.tg.CloudStorage.getItems(keys, (err, values) => {
-                if (err) reject(err);
-                else resolve(values || {});
-              });
-            } catch (e) {
-              reject(e);
-            }
-          });
-        },
-
-        _cloudSetItem(key, value) {
-          return new Promise((resolve, reject) => {
-            try {
-              this.tg.CloudStorage.setItem(key, value, (err, stored) => {
-                if (err) reject(err);
-                else resolve(stored);
-              });
-            } catch (e) {
-              reject(e);
-            }
-          });
-        },
-
-        _cloudRemoveItems(keys) {
-          return new Promise((resolve) => {
-            if (!keys || keys.length === 0) return resolve(true);
-            try {
-              this.tg.CloudStorage.removeItems(keys, () => resolve(true));
-            } catch (_) {
-              resolve(false);
-            }
-          });
-        },
-
-        async loadFromCloud() {
-          if (!this.hasCloud) return null;
-          this.syncStatus = 'syncing';
-          try {
-            const metaRes = await this._cloudGetItems(['sv_meta']);
-            if (!metaRes || !metaRes.sv_meta) {
-              this.syncStatus = 'synced';
-              return null;
-            }
-            const meta = JSON.parse(metaRes.sv_meta);
-            const count = Number(meta.chunks) || 0;
-            this.lastSavedChunks = count;
-            if (count <= 0) {
-              this.syncStatus = 'synced';
-              return null;
-            }
-
-            const chunkKeys = [];
-            for (let i = 0; i < count; i++) chunkKeys.push(`sv_c_${i}`);
-            const chunkValues = await this._cloudGetItems(chunkKeys);
-
-            let joined = '';
-            for (let i = 0; i < count; i++) {
-              if (typeof chunkValues[`sv_c_${i}`] !== 'string') {
-                throw new Error(`Missing chunk sv_c_${i}`);
-              }
-              joined += chunkValues[`sv_c_${i}`];
-            }
-
-            const decoded = meta.enc === 'uri' ? decodeURIComponent(joined) : joined;
-            const parsed = JSON.parse(decoded);
-            this.syncStatus = 'synced';
-            return parsed;
-          } catch (e) {
-            console.warn('CloudStorage load error:', e);
-            this.syncStatus = 'error';
-            return null;
-          }
-        },
-
-        async saveToCloud(data) {
-          this.saveLocal(data);
-          if (!this.hasCloud) return true;
-
-          this.syncStatus = 'syncing';
-          updateSyncIndicators();
-
-          try {
-            // Encode JSON to pure ASCII so 3500 chars === 3500 bytes (strictly < 4096 bytes limit)
-            const encoded = encodeURIComponent(JSON.stringify(data));
-            const chunks = [];
-            for (let i = 0; i < encoded.length; i += CHUNK_SIZE) {
-              chunks.push(encoded.slice(i, i + CHUNK_SIZE));
-            }
-
-            // Read previous chunk count if unknown so we can clean up stale chunks
-            let prevCount = this.lastSavedChunks;
-            if (prevCount === 0) {
-              try {
-                const oldMeta = await this._cloudGetItems(['sv_meta']);
-                if (oldMeta && oldMeta.sv_meta) {
-                  prevCount = Number(JSON.parse(oldMeta.sv_meta).chunks) || 0;
-                }
-              } catch (_) {}
-            }
-
-            // Write all chunks first
-            for (let i = 0; i < chunks.length; i++) {
-              await this._cloudSetItem(`sv_c_${i}`, chunks[i]);
-            }
-
-            // Write metadata atomically after chunks
-            const metaPayload = JSON.stringify({
-              chunks: chunks.length,
-              updatedAt: data.updatedAt || Date.now(),
-              enc: 'uri',
-              v: 2,
-            });
-            await this._cloudSetItem('sv_meta', metaPayload);
-
-            // Clean up unused trailing chunks if payload shrank
-            if (prevCount > chunks.length) {
-              const staleKeys = [];
-              for (let i = chunks.length; i < prevCount; i++) {
-                staleKeys.push(`sv_c_${i}`);
-              }
-              await this._cloudRemoveItems(staleKeys);
-            }
-
-            this.lastSavedChunks = chunks.length;
-            this.syncStatus = 'synced';
-            updateSyncIndicators();
-            return true;
-          } catch (e) {
-            console.warn('CloudStorage save error:', e);
-            this.syncStatus = 'error';
-            updateSyncIndicators();
-            return false;
-          }
-        },
-
-        scheduleSave(data) {
-          this.saveLocal(data);
-          if (!this.hasCloud) return;
-          clearTimeout(this.saveTimer);
-          this.syncStatus = 'syncing';
-          updateSyncIndicators();
-          this.saveTimer = setTimeout(() => {
-            this.saveToCloud(data);
-          }, 450);
-        },
-
-        getBadgeText() {
-          if (this.hasCloud) {
-            if (this.syncStatus === 'syncing') return '☁️ Синхронизация...';
-            if (this.syncStatus === 'error') return '☁️ TG Cloud (кэш)';
-            return '☁️ Telegram Cloud';
-          }
-          return '📱 Браузер / PWA';
-        },
-      };
-
-      // =========================================================================
-      // 3. CONSTANTS, CATEGORIES, MODES, TONES & DEMO DATA
-      // =========================================================================
-      const CATEGORIES = [
-        { id: 'Еда', emoji: '🛒', color: '#F59E0B', badge: 'bg-amber-500/15 text-amber-600 dark:text-amber-400' },
-        { id: 'Маркетплейсы', emoji: '🛍️', color: '#A855F7', badge: 'bg-purple-500/15 text-purple-600 dark:text-purple-400' },
-        { id: 'Транспорт', emoji: '🚕', color: '#3B82F6', badge: 'bg-blue-500/15 text-blue-600 dark:text-blue-400' },
-        { id: 'Дом и ЖКХ', emoji: '🏠', color: '#10B981', badge: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400' },
-        { id: 'Долги', emoji: '💳', color: '#EF4444', badge: 'bg-rose-500/15 text-rose-600 dark:text-rose-400' },
-        { id: 'Здоровье', emoji: '💊', color: '#EC4899', badge: 'bg-pink-500/15 text-pink-600 dark:text-pink-400' },
-        { id: 'Развлечения', emoji: '🎬', color: '#6366F1', badge: 'bg-indigo-500/15 text-indigo-600 dark:text-indigo-400' },
-        { id: 'Доход', emoji: '💵', color: '#10B981', badge: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400' },
-        { id: 'Прочее', emoji: '📦', color: '#64748B', badge: 'bg-slate-500/15 text-slate-600 dark:text-slate-400' },
-      ];
-
-      const MODES = [
-        { id: 'debts', title: 'Выбраться из долгов', desc: 'Закрыть кредиты, кредитки и МФО быстрее', emoji: '🔥' },
-        { id: 'salary', title: 'Жить без провалов до зарплаты', desc: 'Четкий дневной лимит без кассовых разрывов', emoji: '🧭' },
-        { id: 'goal', title: 'Накопить на цель', desc: 'Собрать на подушку, технику или отпуск', emoji: '🎯' },
-        { id: 'family', title: 'Общий бюджет', desc: 'Прозрачные траты без лишних споров', emoji: '🤝' },
-      ];
-
-      const TONES = [
-        {
-          id: 'friend',
-          title: 'Спокойный друг',
-          desc: 'Мягкая поддержка без осуждения и вины',
-          emoji: '🌿',
-          sample: '«Всё поправимо. Давай спокойно посмотрим на цифры и выстроим комфортный ритм.»',
-        },
-        {
-          id: 'sergeant',
-          title: 'Строгий сержант',
-          desc: 'Жесткая дисциплина против импульсивных трат',
-          emoji: '🫡',
-          sample: '«Отставить панику и маркетплейсы! Бьем по долгам строго по графику.»',
-        },
-        {
-          id: 'bro',
-          title: 'Свой парень с юмором',
-          desc: 'Живой язык, легкая ирония и поддержка',
-          emoji: '😎',
-          sample: '«Кофе был топовый, но если не притормозим — до аванса подружимся с гречкой.»',
-        },
-      ];
-
-      const DEBT_TYPES = [
-        { id: 'Кредитка', badge: 'bg-purple-500/15 text-purple-600 dark:text-purple-400' },
-        { id: 'Кредит', badge: 'bg-blue-500/15 text-blue-600 dark:text-blue-400' },
-        { id: 'Ипотека', badge: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400' },
-        { id: 'Рассрочка', badge: 'bg-amber-500/15 text-amber-600 dark:text-amber-400' },
-        { id: 'МФО', badge: 'bg-rose-500/15 text-rose-600 dark:text-rose-400' },
-      ];
-
-      const CARRYOVER_RULES = [
-        { id: 'tomorrow', label: 'Перенести на завтра', short: 'Остаток → завтра' },
-        { id: 'spread', label: 'Размазать до зарплаты', short: 'Равномерно до ЗП' },
-        { id: 'savings', label: 'Отправлять в копилку', short: 'Остаток → копилка' },
-      ];
-
-      const MONTHS_RU = [
-        'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
-        'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь',
-      ];
-
-      function pad2(n) {
-        return String(n).padStart(2, '0');
-      }
-
-      function getTodayISO() {
-        const d = new Date();
-        return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
-      }
-
-      function addDaysISO(days) {
-        const d = new Date(Date.now() + days * 86400000);
-        return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
-      }
-
-      function formatRub(val) {
-        const num = Math.round(Number(val) || 0);
-        return `${num.toLocaleString('ru-RU')} ₽`;
-      }
-
-  
+    #stories-canvas {
+      width: 190px;
+      height: auto;
+      aspect-ratio: 9 / 16;
+      border-radius: 1
